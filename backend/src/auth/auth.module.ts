@@ -7,7 +7,7 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LocalStrategy } from './local.strategy'; // <-- Impor
-
+import { JwtStrategy } from './jwt.strategy'; // <-- Impor
 @Module({
   imports: [
     // Impor modul lain yang kita butuhkan
@@ -27,6 +27,7 @@ import { LocalStrategy } from './local.strategy'; // <-- Impor
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy], // Nanti kita tambahkan 'Strategy' di sini
+  providers: [AuthService, LocalStrategy, JwtStrategy],
+  exports: [PassportModule], // Nanti kita tambahkan 'Strategy' di sini
 })
 export class AuthModule {}

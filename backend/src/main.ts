@@ -17,7 +17,7 @@ async function bootstrap() {
     .addTag('stock', 'Operasi manajemen stok')
     .addTag('auth', 'Autentikasi Pengguna')
     // Kita tambahkan ini nanti saat implementasi JWT
-    // .addBearerAuth() 
+    .addBearerAuth() 
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
