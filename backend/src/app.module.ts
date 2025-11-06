@@ -6,6 +6,9 @@ import { TypeOrmModule } from '@nestjs/typeorm'; // Impor TypeOrmModule
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { StockModule } from './stock/stock.module';
 
 @Module({
   imports: [
@@ -30,6 +33,12 @@ import { AppService } from './app.service';
         },
       }),
     }),
+
+    AuthModule,
+
+    UsersModule,
+
+    StockModule,
     
    // Nanti kita akan tambahkan module lain di sini
     // (AuthModule, StockModule, etc.)

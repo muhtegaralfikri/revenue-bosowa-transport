@@ -24,6 +24,6 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document); 
   // --- Selesai Konfigurasi Swagger ---
 
-  await app.listen(3001); // Atau port lain, misal 3001
+  await app.listen(3000); // Atau port lain, misal 3001
 }
 bootstrap();
