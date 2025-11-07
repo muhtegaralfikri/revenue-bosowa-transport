@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuthStore } from '@/stores/auth.store'; // <-- Impor Pinia Store
+import { useAuthStore } from '@/stores/auth.store';
 import logoSrc from '@/assets/logo.png';
-
-// Impor komponen PrimeVUE
 import Menubar from 'primevue/menubar';
 import Button from 'primevue/button';
 
 const router = useRouter();
-const authStore = useAuthStore(); // <-- Gunakan store
+const authStore = useAuthStore();
 
 // Definisikan item menu.
 const menuItems = ref([
@@ -48,9 +46,9 @@ const handleLogout = () => {
 
 <template>
   <header class="navbar-shell">
-    <div class="brand">
+    <button class="brand" type="button" @click="router.push('/')">
       <img :src="logoSrc" alt="Bosowa Fuel" class="brand__logo" />
-    </div>
+    </button>
 
     <div class="nav-group">
       <Menubar :model="menuItems" class="nav-menu" />
@@ -81,6 +79,7 @@ const handleLogout = () => {
   margin: 0;
 }
 
+
 .navbar-shell {
   background: #1e468c;
   color: #fff;
@@ -96,6 +95,10 @@ const handleLogout = () => {
   align-items: center;
   margin-right: 1rem;
   height: 40px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
 
 .brand__logo {
@@ -112,6 +115,7 @@ const handleLogout = () => {
   display: flex;
   align-items: center;
   gap: 1.5rem;
+  position: relative;
 }
 
 :deep(.p-menubar) {
@@ -129,6 +133,25 @@ const handleLogout = () => {
 :deep(.p-menubar-root-list) {
   display: flex;
   gap: 1.25rem;
+}
+
+:deep(.p-menubar.p-menubar-mobile-active .p-menubar-root-list) {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  flex-direction: column;
+  gap: 0;
+  background: #ffffff;
+  padding: 0.5rem 0;
+  border-radius: 0.75rem;
+  box-shadow: 0 12px 30px -18px rgba(0, 0, 0, 0.45);
+  min-width: 180px;
+  z-index: 50;
+}
+
+:deep(.p-menubar.p-menubar-mobile-active .p-menuitem-link) {
+  padding: 0.75rem 1rem;
+  color: #1e468c !important;
 }
 
 :deep(.p-menubar .p-menuitem-link) {
