@@ -160,4 +160,14 @@ const handleLogout = () => {
 :deep(.nav-actions .p-button-icon) {
   color: #ffffff !important;
 }
+
+:deep(.nav-actions .p-button.p-button-text:hover) {
+  background: #ffffff;
+  color: #1e468c !important;
+}
+
+:deep(.nav-actions .p-button.p-button-text:hover .p-button-label),
+:deep(.nav-actions .p-button.p-button-text:hover .p-button-icon) {
+  color: #1e468c !important;
+}
 </style>
