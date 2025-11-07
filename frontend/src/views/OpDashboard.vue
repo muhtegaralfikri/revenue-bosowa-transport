@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useAuthStore } from '@/stores/auth.store';
+import { useStockStore } from '@/stores/stock.store';
 import apiClient from '@/services/api';
 
-// Impor komponen PrimeVUE
 import InputNumber from 'primevue/inputnumber';
 import Textarea from 'primevue/textarea';
 import Button from 'primevue/button';
@@ -13,6 +13,7 @@ import Divider from 'primevue/divider';
 import { useToast } from 'primevue/usetoast';
 
 const authStore = useAuthStore();
+const stockStore = useStockStore();
 const toast = useToast();
 
 // State untuk form
@@ -79,6 +80,8 @@ const handleSubmit = async () => {
       detail: `Pemakaian ${amount.value} liter berhasil dicatat.`,
       life: 3000,
     });
+
+    stockStore.refreshAfterTransaction();
 
     // Reset form
     amount.value = null;

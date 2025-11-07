@@ -1,45 +1,15 @@
 <script setup lang="ts">
-// --- 1. Impor ---
-import { ref, onMounted } from 'vue';
-import apiClient from '@/services/api';
-// Impor komponen PrimeVUE
+import { storeToRefs } from 'pinia';
+import { useStockStore } from '@/stores/stock.store';
 import Card from 'primevue/card';
-import Skeleton from 'primevue/skeleton'; // Untuk loading yang profesional
+import Skeleton from 'primevue/skeleton';
+import Message from 'primevue/message';
 
-// --- 2. Definisikan State ---
-interface StockSummary {
-  currentStock: number;
-  todayUsage: number;
-  todayInitialStock: number;
-}
+const stockStore = useStockStore();
+const { summary, loading, error } = storeToRefs(stockStore);
 
-const summaryData = ref<StockSummary | null>(null);
-const loading = ref(true);
-const error = ref<string | null>(null);
-
-// --- 3. Logic Fetch Data ---
-const fetchSummary = async () => {
-  loading.value = true;
-  error.value = null;
-  try {
-    // Panggil API kita (endpoint publik)
-    const response = await apiClient.get<StockSummary>('/stock/summary');
-    summaryData.value = response.data;
-  } catch (err) {
-    error.value = 'Gagal memuat data ringkasan. Pastikan backend berjalan.';
-    console.error(err);
-  } finally {
-    loading.value = false;
-  }
-};
-
-// Panggil fungsi saat komponen di-mount (dijalankan)
-onMounted(fetchSummary);
-
-// --- 4. Helper (Opsional tapi bagus) ---
-const formatLiters = (value: number | undefined) => {
+const formatLiters = (value?: number) => {
   if (value === undefined) return '...';
-  // Format angka ke '1.000,50'
   return `${value.toLocaleString('id-ID', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -57,10 +27,13 @@ const formatLiters = (value: number | undefined) => {
             <div v-if="loading">
               <Skeleton height="2rem" class="mb-2"></Skeleton>
             </div>
-            <div v-else-if="summaryData">
+            <div v-else-if="summary">
               <h2 class="text-3xl font-bold text-blue-600">
-                {{ formatLiters(summaryData.currentStock) }}
+                {{ formatLiters(summary.currentStock) }}
               </h2>
+            </div>
+            <div v-else>
+              <small class="text-color-secondary">Belum ada data stok.</small>
             </div>
           </template>
         </Card>
@@ -73,10 +46,13 @@ const formatLiters = (value: number | undefined) => {
             <div v-if="loading">
               <Skeleton height="2rem" class="mb-2"></Skeleton>
             </div>
-            <div v-else-if="summaryData">
+            <div v-else-if="summary">
               <h2 class="text-3xl font-bold text-orange-600">
-                {{ formatLiters(summaryData.todayUsage) }}
+                {{ formatLiters(summary.todayUsage) }}
               </h2>
+            </div>
+            <div v-else>
+              <small class="text-color-secondary">Belum ada data pemakaian.</small>
             </div>
           </template>
         </Card>
@@ -89,10 +65,13 @@ const formatLiters = (value: number | undefined) => {
             <div v-if="loading">
               <Skeleton height="2rem" class="mb-2"></Skeleton>
             </div>
-            <div v-else-if="summaryData">
+            <div v-else-if="summary">
               <h2 class="text-3xl font-bold text-gray-700">
-                {{ formatLiters(summaryData.todayInitialStock) }}
+                {{ formatLiters(summary.todayInitialStock) }}
               </h2>
+            </div>
+            <div v-else>
+              <small class="text-color-secondary">Belum ada data stok awal.</small>
             </div>
           </template>
         </Card>
