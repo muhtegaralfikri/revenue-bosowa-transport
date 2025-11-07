@@ -11,7 +11,7 @@ const { summary, loading, error } = storeToRefs(stockStore);
 const formatLiters = (value?: number) => {
   if (value === undefined) return '...';
   return `${value.toLocaleString('id-ID', {
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   })} Liter`;
 };
