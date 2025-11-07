@@ -132,22 +132,42 @@ export class StockService {
     historyQueryDto: StockHistoryQueryDto,
     user: AuthenticatedUser,
   ) {
-    const { page = 1, limit = 10, type } = historyQueryDto;
+    const { page = 1, limit = 10, type, startDate, endDate } = historyQueryDto;
     const skip = (page - 1) * limit; // Kalkulasi 'offset'
 
     const enforcedType = user.role === 'operasional' ? 'OUT' : type;
 
-    // Kita pakai findAndCount untuk mendapatkan data + total data (untuk pagination)
-    const [transactions, total] =
-      await this.transactionRepository.findAndCount({
-        where: enforcedType ? { type: enforcedType } : undefined,
-        relations: ['user'], // Join dengan tabel 'user'
-        order: {
-          timestamp: 'DESC', // Urutkan dari yang terbaru
-        },
-        take: limit, // Ambil 'limit' data
-        skip: skip, // Lewati 'skip' data
+    const qb = this.transactionRepository
+      .createQueryBuilder('tx')
+      .leftJoinAndSelect('tx.user', 'user')
+      .orderBy('tx.timestamp', 'DESC')
+      .skip(skip)
+      .take(limit);
+
+    if (enforcedType) {
+      qb.andWhere('tx.type = :type', { type: enforcedType });
+    }
+
+    const parsedStart = startDate ? new Date(startDate) : null;
+    const parsedEnd = endDate ? new Date(endDate) : null;
+
+    if (parsedStart && parsedEnd && parsedStart > parsedEnd) {
+      throw new BadRequestException('startDate tidak boleh melebihi endDate.');
+    }
+
+    if (parsedStart) {
+      qb.andWhere('tx.timestamp >= :startDate', {
+        startDate: parsedStart.toISOString(),
       });
+    }
+
+    if (parsedEnd) {
+      qb.andWhere('tx.timestamp <= :endDate', {
+        endDate: parsedEnd.toISOString(),
+      });
+    }
+
+    const [transactions, total] = await qb.getManyAndCount();
 
     // Kita format sedikit datanya agar tidak mengekspos password user
     const formattedData = transactions.map((tx) => ({
