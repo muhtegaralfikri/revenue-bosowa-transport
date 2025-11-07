@@ -26,6 +26,36 @@ body {
   min-height: 100vh;
 }
 
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.user-greeting {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 1rem clamp(1rem, 3vw, 2rem) 0;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.app-footer {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #fff;
+  padding: 1rem;
+  background: #1e468c;
+}
+
 /* Layout utilitas bersama untuk halaman form */
 .page-shell {
   min-height: calc(100vh - 65px);

@@ -2,11 +2,11 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth.store'; // <-- Impor Pinia Store
+import logoSrc from '@/assets/logo.png';
 
 // Impor komponen PrimeVUE
 import Menubar from 'primevue/menubar';
 import Button from 'primevue/button';
-import Avatar from 'primevue/avatar';
 
 const router = useRouter();
 const authStore = useAuthStore(); // <-- Gunakan store
@@ -15,28 +15,23 @@ const authStore = useAuthStore(); // <-- Gunakan store
 const menuItems = ref([
   {
     label: 'Beranda',
-    icon: 'pi pi-fw pi-home',
     command: () => {
       router.push('/');
     },
   },
-  // Menu Dashboard Admin (hanya tampil jika admin)
   {
-    label: 'Dashboard Admin',
-    icon: 'pi pi-fw pi-cog',
+    label: 'Dashboard',
     command: () => {
       router.push('/admin-dashboard');
     },
-    visible: () => authStore.isAdmin, // <-- Kunci Reaktif
+    visible: () => authStore.isAdmin,
   },
-  // Menu Dashboard Operasional (hanya tampil jika operasional)
   {
-    label: 'Dashboard Operasional',
-    icon: 'pi pi-fw pi-wrench',
+    label: 'Dashboard',
     command: () => {
       router.push('/ops-dashboard');
     },
-    visible: () => authStore.isOperasional, // <-- Kunci Reaktif
+    visible: () => authStore.isOperasional,
   },
 ]);
 
@@ -52,48 +47,117 @@ const handleLogout = () => {
 </script>
 
 <template>
-  <Menubar :model="menuItems">
-    <template #start>
-      <div class="flex align-items-center mr-4">
-        <span class="font-bold text-lg">BOSOWA FUEL</span>
-      </div>
-    </template>
+  <header class="navbar-shell">
+    <div class="brand">
+      <img :src="logoSrc" alt="Bosowa Fuel" class="brand__logo" />
+    </div>
 
-    <template #end>
-      <Button
-        v-if="!authStore.isAuthenticated"
-        label="Log In"
-        icon="pi pi-sign-in"
-        class="p-button-text p-button-sm"
-        @click="goToLogin"
-      />
+    <div class="nav-group">
+      <Menubar :model="menuItems" class="nav-menu" />
 
-      <div v-if="authStore.isAuthenticated" class="flex align-items-center">
-        <Avatar
-          icon="pi pi-user"
-          shape="circle"
-          class="mr-2"
-        />
-        <span class="mr-3">Halo, {{ authStore.user?.username }}</span>
+      <div class="nav-actions">
         <Button
+          v-if="!authStore.isAuthenticated"
+          label="Log In"
+          icon="pi pi-sign-in"
+          class="p-button-text p-button-sm"
+          @click="goToLogin"
+        />
+
+        <Button
+          v-else
           label="Log Out"
           icon="pi pi-sign-out"
           class="p-button-text p-button-sm p-button-danger"
           @click="handleLogout"
         />
       </div>
-    </template>
-  </Menubar>
+    </div>
+  </header>
 </template>
 
 <style scoped>
-/* Style tetap sama */
-.p-menubar {
-  border-radius: 0;
-  border-bottom: 1px solid var(--surface-d);
-  padding: 0.5rem 1.5rem;
+:global(body) {
+  margin: 0;
 }
-:deep(.p-menubar-start) {
-  margin-right: auto;
+
+.navbar-shell {
+  background: #1e468c;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2.75rem;
+  height: 60px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  margin-right: 1rem;
+  height: 40px;
+}
+
+.brand__logo {
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+}
+
+:deep(.nav-menu) {
+  background: transparent;
+}
+
+.nav-group {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+:deep(.p-menubar) {
+  border-radius: 0;
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+
+:deep(.p-menubar-button) {
+  color: #fff;
+}
+
+:deep(.p-menubar-root-list) {
+  display: flex;
+  gap: 1.25rem;
+}
+
+:deep(.p-menubar .p-menuitem-link) {
+  color: #ffffff !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+:deep(.p-menubar .p-menuitem-text) {
+  color: inherit !important;
+}
+
+:deep(.p-menubar .p-menuitem-link:hover) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+:deep(.p-menubar .p-button) {
+  color: #fff;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+:deep(.nav-actions .p-button),
+:deep(.nav-actions .p-button-label),
+:deep(.nav-actions .p-button-icon) {
+  color: #ffffff !important;
 }
 </style>
