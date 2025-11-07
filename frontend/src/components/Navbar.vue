@@ -29,10 +29,10 @@ const menuItems = ref([
 ]);
 
 // Fungsi untuk tombol Login
+// Fungsi untuk tombol Login
 const goToLogin = () => {
-  // Nanti kita arahkan ke halaman login
-  // router.push('/login');
-  alert('Menuju halaman login...'); // Placeholder untuk sekarang
+  // Ganti 'alert' dengan ini:
+  router.push('/login');
 };
 </script>
 
