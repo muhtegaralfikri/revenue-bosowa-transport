@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import Card from 'primevue/card';
 import Button from 'primevue/button';
-import Calendar from 'primevue/calendar';
+import DatePicker from 'primevue/datepicker';
 import * as XLSX from 'xlsx';
 import apiClient from '@/services/api';
 
@@ -337,7 +337,7 @@ defineExpose({
         <div class="history-filters">
           <div class="filter-field">
             <label class="filter-label" for="history-range">Periode</label>
-            <Calendar
+            <DatePicker
               id="history-range"
               v-model="selectedRange"
               selectionMode="range"

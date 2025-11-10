@@ -41,7 +41,17 @@ export class StockService {
     // 3. todayInitialStock: (currentStock) - (SUM 'IN' HARI INI) + (SUM 'OUT' HARI INI)
     //    ...atau lebih efisien: (SUM 'IN' SEBELUM HARI INI) - (SUM 'OUT' SEBELUM HARI INI)
     
-    const summary = await this.transactionRepository
+    const dbType =
+      this.transactionRepository.manager.connection.options.type;
+    const useTimezoneFn = dbType === 'postgres';
+    const txDateExpr = useTimezoneFn
+      ? 'DATE(timezone(:tz, tx.timestamp))'
+      : 'DATE(tx.timestamp)';
+    const currentDateExpr = useTimezoneFn
+      ? 'DATE(timezone(:tz, CURRENT_TIMESTAMP))'
+      : 'CURRENT_DATE';
+
+    const queryBuilder = this.transactionRepository
       .createQueryBuilder('tx') // 'tx' adalah alias untuk tabel 'transactions'
       .select(
         "SUM(CASE WHEN tx.type = 'IN' THEN tx.amount ELSE -tx.amount END)",
@@ -51,7 +61,7 @@ export class StockService {
         `SUM(
           CASE
             WHEN tx.type = 'OUT'
-              AND DATE(timezone(:tz, tx.timestamp)) = DATE(timezone(:tz, CURRENT_TIMESTAMP))
+              AND ${txDateExpr} = ${currentDateExpr}
             THEN tx.amount
             ELSE 0
           END
@@ -61,15 +71,19 @@ export class StockService {
       .addSelect(
         `SUM(
           CASE
-            WHEN DATE(timezone(:tz, tx.timestamp)) < DATE(timezone(:tz, CURRENT_TIMESTAMP))
+            WHEN ${txDateExpr} < ${currentDateExpr}
             THEN (CASE WHEN tx.type = 'IN' THEN tx.amount ELSE -tx.amount END)
             ELSE 0
           END
         )`,
         'todayInitialStock',
-      )
-      .setParameter('tz', this.reportTimezone)
-      .getRawOne(); // .getRawOne() karena ini adalah query agregat
+      );
+
+    if (useTimezoneFn) {
+      queryBuilder.setParameter('tz', this.reportTimezone);
+    }
+
+    const summary = await queryBuilder.getRawOne(); // .getRawOne() karena ini adalah query agregat
 
     // getRawOne() mengembalikan string. Kita ubah ke number (float).
     // Jika 'summary.currentStock' adalah null (tabel kosong), '|| 0' akan jadi default.

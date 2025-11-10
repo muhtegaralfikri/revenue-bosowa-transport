@@ -8,7 +8,7 @@ import InputNumber from 'primevue/inputnumber';
 import Textarea from 'primevue/textarea';
 import Button from 'primevue/button';
 import Card from 'primevue/card';
-import Calendar from 'primevue/calendar';
+import DatePicker from 'primevue/datepicker';
 import Divider from 'primevue/divider';
 import { useToast } from 'primevue/usetoast';
 import TransactionHistory from '@/components/TransactionHistory.vue';
@@ -136,7 +136,7 @@ const handleSubmit = async () => {
           <form @submit.prevent="handleSubmit" class="form-stack">
             <div>
               <label for="date">Tanggal Pemakaian</label>
-              <Calendar
+              <DatePicker
                 id="date"
                 v-model="date"
                 dateFormat="dd/mm/yy"

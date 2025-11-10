@@ -5,7 +5,8 @@ import { useStockStore } from '@/stores/stock.store';
 import Card from 'primevue/card';
 import Skeleton from 'primevue/skeleton';
 import Message from 'primevue/message';
-import Chart from 'primevue/chart';
+import BaseChart from '@/components/BaseChart.vue';
+import type { ChartData, ChartOptions } from 'chart.js';
 
 const stockStore = useStockStore();
 const {
@@ -33,7 +34,7 @@ const formatLiters = (value?: number) => {
   })} Liter`;
 };
 
-const trendChartData = computed(() => {
+const trendChartData = computed<ChartData<'line'> | null>(() => {
   if (!trend.value?.points?.length) return null;
   return {
     labels: trend.value.points.map((point) => point.label),
@@ -49,12 +50,13 @@ const trendChartData = computed(() => {
         pointBackgroundColor: '#1e468c',
         pointBorderColor: '#ffffff',
         borderWidth: 2,
+        type: 'line' as const,
       },
     ],
   };
 });
 
-const trendChartOptions = computed(() => ({
+const trendChartOptions = computed<ChartOptions<'line'>>(() => ({
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
@@ -85,13 +87,13 @@ const trendChartOptions = computed(() => ({
     },
   },
 }));
-const inOutChartData = computed(() => {
+const inOutChartData = computed<ChartData<'bar'> | null>(() => {
   if (!inOutTrend.value?.points?.length) return null;
   return {
     labels: inOutTrend.value.points.map((point) => point.label),
     datasets: [
       {
-        type: 'bar',
+        type: 'bar' as const,
         label: 'Penambahan (IN)',
         data: inOutTrend.value.points.map((point) => point.totalIn),
         backgroundColor: 'rgba(34, 197, 94, 0.7)',
@@ -99,7 +101,7 @@ const inOutChartData = computed(() => {
         borderWidth: 1,
       },
       {
-        type: 'bar',
+        type: 'bar' as const,
         label: 'Pemakaian (OUT)',
         data: inOutTrend.value.points.map((point) => point.totalOut),
         backgroundColor: 'rgba(249, 115, 22, 0.7)',
@@ -110,7 +112,7 @@ const inOutChartData = computed(() => {
   };
 });
 
-const inOutChartOptions = computed(() => ({
+const inOutChartOptions = computed<ChartOptions<'bar'>>(() => ({
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
@@ -220,7 +222,7 @@ const inOutChartOptions = computed(() => ({
             </div>
             <div v-else-if="trendChartData">
               <div class="trend-chart-wrapper">
-                <Chart
+                <BaseChart
                   type="line"
                   :data="trendChartData"
                   :options="trendChartOptions"
@@ -248,7 +250,7 @@ const inOutChartOptions = computed(() => ({
             </div>
             <div v-else-if="inOutChartData">
               <div class="trend-chart-wrapper">
-                <Chart
+                <BaseChart
                   type="bar"
                   :data="inOutChartData"
                   :options="inOutChartOptions"

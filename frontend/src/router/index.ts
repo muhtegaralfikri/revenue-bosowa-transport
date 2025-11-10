@@ -27,13 +27,9 @@ const router = createRouter({
       path: '/admin-dashboard',
       name: 'admin-dashboard',
       component: AdminDashboard,
-      beforeEnter: (to, from, next) => {
-        const authStore = useAuthStore();
-        if (authStore.isAdmin) {
-          next(); // Izinkan
-        } else {
-          next('/login'); // Tolak, lempar ke login
-        }
+      meta: {
+        requiresAuth: true,
+        allowedRoles: ['admin'],
       },
     },
     // Rute Operasional (Dilindungi)
@@ -41,16 +37,49 @@ const router = createRouter({
       path: '/ops-dashboard',
       name: 'ops-dashboard',
       component: OpsDashboard,
-      beforeEnter: (to, from, next) => {
-        const authStore = useAuthStore();
-        if (authStore.isOperasional) {
-          next(); // Izinkan
-        } else {
-          next('/login'); // Tolak, lempar ke login
-        }
+      meta: {
+        requiresAuth: true,
+        allowedRoles: ['operasional'],
       },
     },
   ],
+});
+
+router.beforeEach((to, from, next) => {
+  const authStore = useAuthStore();
+
+  // Pastikan state sinkron dengan localStorage sebelum guard jalan
+  if (!authStore.user && authStore.token) {
+    try {
+      authStore.checkAuth();
+    } catch (error) {
+      // Token tidak valid, biarkan checkAuth meng-handle logout
+    }
+  }
+
+  if (to.meta?.requiresAuth && !authStore.isAuthenticated) {
+    next({
+      name: 'login',
+      query: { redirect: to.fullPath },
+    });
+    return;
+  }
+
+  const userRole = authStore.user?.role ?? null;
+  if (to.meta?.allowedRoles && (!userRole || !to.meta.allowedRoles.includes(userRole))) {
+    // Jika user sudah login tapi role tidak sesuai, arahkan ke dashboard sesuai role atau logout
+    if (authStore.isAdmin) {
+      next('/admin-dashboard');
+    } else if (authStore.isOperasional) {
+      next('/ops-dashboard');
+    } else {
+      authStore.logout();
+      next({ name: 'login' });
+    }
+    return;
+  }
+
+  next();
 });
 
 export default router;

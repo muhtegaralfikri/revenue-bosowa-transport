@@ -25,6 +25,25 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## Database configuration
+
+By default the application expects a Postgres connection string through `DATABASE_URL`.  
+If you need to run it on XAMPP's MySQL / MariaDB instead, follow these steps:
+
+1. Start the MySQL service from the XAMPP control panel and create an empty database (e.g. `fuel_ledger`).
+2. Install the MySQL driver once (`npm install mysql2`) so TypeORM can talk to MySQL.
+3. Copy `.env` ➜ `.env.local` (or edit `.env` for development) and set:
+   ```
+   DB_TYPE=mysql
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_USERNAME=root
+   DB_PASSWORD=your_xampp_password   # default is empty
+   DB_NAME=fuel_ledger
+   ```
+4. Leave `DATABASE_URL` for production Postgres deployments; the backend will automatically pick the MySQL settings when `DB_TYPE=mysql`.
+5. Run `npm run start:dev` – TypeORM's `synchronize:true` will auto-create the tables in your XAMPP database for local development.
+
 ## Project setup
 
 ```bash
