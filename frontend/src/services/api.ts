@@ -3,8 +3,7 @@ import axios from 'axios';
 
 // Buat instance axios yang terpusat
 const apiClient = axios.create({
-  // URL backend Nest.js kita
-  baseURL: 'http://localhost:3000/api', 
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   },
