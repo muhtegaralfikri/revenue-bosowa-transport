@@ -60,13 +60,24 @@ export class StockService {
       .addSelect(
         `SUM(
           CASE
+            WHEN tx.type = 'IN'
+              AND ${txDateExpr} = ${currentDateExpr}
+            THEN tx.amount
+            ELSE 0
+          END
+        )`,
+        'todayStockIn',
+      )
+      .addSelect(
+        `SUM(
+          CASE
             WHEN tx.type = 'OUT'
               AND ${txDateExpr} = ${currentDateExpr}
             THEN tx.amount
             ELSE 0
           END
         )`,
-        'todayUsage',
+        'todayStockOut',
       )
       .addSelect(
         `SUM(
@@ -87,10 +98,19 @@ export class StockService {
 
     // getRawOne() mengembalikan string. Kita ubah ke number (float).
     // Jika 'summary.currentStock' adalah null (tabel kosong), '|| 0' akan jadi default.
+    const currentStock = parseFloat(summary.currentStock) || 0;
+    const todayInitialStock = parseFloat(summary.todayInitialStock) || 0;
+    const todayStockIn = parseFloat(summary.todayStockIn) || 0;
+    const todayStockOut = parseFloat(summary.todayStockOut) || 0;
+    const todayClosingStock = todayInitialStock + todayStockIn - todayStockOut;
+
     return {
-      currentStock: parseFloat(summary.currentStock) || 0,
-      todayUsage: parseFloat(summary.todayUsage) || 0,
-      todayInitialStock: parseFloat(summary.todayInitialStock) || 0,
+      currentStock,
+      todayUsage: todayStockOut,
+      todayInitialStock,
+      todayStockIn,
+      todayStockOut,
+      todayClosingStock,
     };
   }
 

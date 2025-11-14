@@ -26,13 +26,43 @@ onMounted(() => {
   stockStore.fetchInOutTrend(7);
 });
 
-const formatLiters = (value?: number) => {
-  if (value === undefined) return '...';
+const formatLiters = (value?: number | null) => {
+  if (value === undefined || value === null) return '0 Liter';
   return `${value.toLocaleString('id-ID', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   })} Liter`;
 };
+
+const summaryCards = computed(() => {
+  const data = summary.value;
+  return [
+    {
+      key: 'opening',
+      title: 'Stok Awal Hari Ini',
+      accent: 'text-gray-700',
+      value: data?.todayInitialStock ?? null,
+    },
+    {
+      key: 'in',
+      title: 'Input Hari Ini',
+      accent: 'text-green-600',
+      value: data?.todayStockIn ?? null,
+    },
+    {
+      key: 'out',
+      title: 'Output Hari Ini',
+      accent: 'text-orange-600',
+      value: data?.todayStockOut ?? data?.todayUsage ?? null,
+    },
+    {
+      key: 'closing',
+      title: 'Stok Akhir Hari Ini',
+      accent: 'text-blue-600',
+      value: data?.todayClosingStock ?? data?.currentStock ?? null,
+    },
+  ];
+});
 
 const trendChartData = computed<ChartData<'line'> | null>(() => {
   if (!trend.value?.points?.length) return null;
@@ -146,59 +176,25 @@ const inOutChartOptions = computed<ChartOptions<'bar'>>(() => ({
 
 <template>
   <div class="p-4">
-    <div class="grid">
-      <div class="col-12 md:col-4">
+    <div class="grid summary-grid">
+      <div
+        v-for="metric in summaryCards"
+        :key="metric.key"
+        class="col-12 sm:col-6 lg:col-3"
+      >
         <Card>
-          <template #title>Sisa Stok Saat Ini</template>
+          <template #title>{{ metric.title }}</template>
           <template #content>
             <div v-if="loading">
-              <Skeleton height="2rem" class="mb-2"></Skeleton>
+              <Skeleton height="2rem" class="mb-2" />
             </div>
             <div v-else-if="summary">
-              <h2 class="text-3xl font-bold text-blue-600">
-                {{ formatLiters(summary.currentStock) }}
+              <h2 class="text-3xl font-bold" :class="metric.accent">
+                {{ formatLiters(metric.value) }}
               </h2>
             </div>
             <div v-else>
               <small class="text-color-secondary">Belum ada data stok.</small>
-            </div>
-          </template>
-        </Card>
-      </div>
-
-      <div class="col-12 md:col-4">
-        <Card>
-          <template #title>Pemakaian Hari Ini</template>
-          <template #content>
-            <div v-if="loading">
-              <Skeleton height="2rem" class="mb-2"></Skeleton>
-            </div>
-            <div v-else-if="summary">
-              <h2 class="text-3xl font-bold text-orange-600">
-                {{ formatLiters(summary.todayUsage) }}
-              </h2>
-            </div>
-            <div v-else>
-              <small class="text-color-secondary">Belum ada data pemakaian.</small>
-            </div>
-          </template>
-        </Card>
-      </div>
-
-      <div class="col-12 md:col-4">
-        <Card>
-          <template #title>Stok Awal Hari Ini</template>
-          <template #content>
-            <div v-if="loading">
-              <Skeleton height="2rem" class="mb-2"></Skeleton>
-            </div>
-            <div v-else-if="summary">
-              <h2 class="text-3xl font-bold text-gray-700">
-                {{ formatLiters(summary.todayInitialStock) }}
-              </h2>
-            </div>
-            <div v-else>
-              <small class="text-color-secondary">Belum ada data stok awal.</small>
             </div>
           </template>
         </Card>

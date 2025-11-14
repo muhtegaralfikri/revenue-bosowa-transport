@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import Card from 'primevue/card';
 import Button from 'primevue/button';
 import DatePicker from 'primevue/datepicker';
 import * as XLSX from 'xlsx';
 import apiClient from '@/services/api';
+import { useStockStore } from '@/stores/stock.store';
 
 interface TransactionUser {
   id: string;
@@ -52,6 +54,8 @@ const props = withDefaults(
 // Always use Makassar timezone unless component caller overrides via prop.
 const resolvedTimeZone = computed(() => props.timeZone || MAKASSAR_TIME_ZONE);
 
+const stockStore = useStockStore();
+const { summary } = storeToRefs(stockStore);
 const history = ref<TransactionHistoryItem[]>([]);
 const loading = ref(false);
 const errorMessage = ref<string | null>(null);
@@ -234,6 +238,7 @@ const exportToExcel = () => {
     ? `Periode: ${activeRangeLabel.value}`
     : 'Periode: Semua data';
 
+  const stockSummary = summary.value;
   const rows: (string | number)[][] = [];
   const titleRow =
     props.title ||
@@ -244,6 +249,12 @@ const exportToExcel = () => {
   rows.push([titleRow]);
   rows.push([periodDescription]);
   rows.push([`Diekspor: ${exportTime}`]);
+  rows.push([]);
+  rows.push(['Ringkasan Stok Harian']);
+  rows.push(['Stok Awal', stockSummary?.todayInitialStock ?? 0]);
+  rows.push(['Input', stockSummary?.todayStockIn ?? 0]);
+  rows.push(['Output', stockSummary?.todayStockOut ?? stockSummary?.todayUsage ?? 0]);
+  rows.push(['Stok Akhir', stockSummary?.todayClosingStock ?? stockSummary?.currentStock ?? 0]);
   rows.push([]);
   rows.push(['No', 'Tanggal', 'Petugas', 'Jumlah (L)', 'Keterangan']);
 

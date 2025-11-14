@@ -7,6 +7,9 @@ export interface StockSummary {
   currentStock: number;
   todayUsage: number;
   todayInitialStock: number;
+  todayStockIn: number;
+  todayStockOut: number;
+  todayClosingStock: number;
 }
 
 export interface StockTrendPoint {
