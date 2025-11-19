@@ -56,6 +56,55 @@ npm run dev
 ```
 Aplikasi front-end memerlukan akses token agar bisa memanggil `/stock/...`. Setelah login berhasil, klien menyimpan access token & refresh token di localStorage dan otomatis merefresh sebelum kedaluwarsa.
 
+## Deployment (aaPanel Ubuntu VPS)
+
+Berikut alur ringkas untuk mendeploy backend dan frontend pada VPS Ubuntu yang dikelola melalui aaPanel:
+
+1. **Persiapan VPS**
+   - Pastikan Node.js 18+ dan npm terinstal (`aaPanel App Store` > Node.js Manager atau manual via nvm).
+   - Tambahkan PM2 dari App Store untuk menjalankan servis Node secara daemon.
+   - Instal Nginx (atau gunakan panel Reverse Proxy) untuk serving API/frontend.
+
+2. **Clone & konfigurasi**
+   - Upload/clone repo ke `/www/wwwroot/fuel-ledger-system`.
+   - Salin file env contoh:
+     ```bash
+     cp backend/.env.example backend/.env
+     cp frontend/.env.example frontend/.env
+     ```
+   - Sesuaikan `backend/.env` (DATABASE_URL/DB_HOST, JWT_SECRET, dsb) dan `frontend/.env` (`VITE_API_URL` mengarah ke domain API anda, mis. `https://api.domainanda.com/api`).
+
+3. **Backend**
+   ```bash
+   cd backend
+   npm install
+   npm run build
+   npm run db:migration:run
+   ```
+   Jalankan via PM2 (CLI server atau menu PM2 di aaPanel):
+   ```bash
+   pm2 start dist/main.js --name fuel-ledger-api
+   pm2 save
+   ```
+   Pada aaPanel > PM2 Manager Anda bisa memantau log. Gunakan Nginx reverse proxy untuk mengarahkan `https://api.domainanda.com` ke `localhost:3000`.
+
+4. **Frontend**
+   ```bash
+   cd ../frontend
+   npm install
+   npm run build
+   ```
+   Hasil build `dist/` bisa disajikan melalui Nginx sebagai static site (set root ke `frontend/dist`). Pastikan `VITE_API_URL` sudah menunjuk ke domain API produk.
+
+5. **SSL & Keamanan**
+   - Gunakan aaPanel `Let's Encrypt` untuk domain API & frontend.
+   - Pastikan firewall membuka port 80/443 saja, dan database hanya bisa diakses internal.
+
+6. **Monitoring**
+   - PM2 otomatis restart jika proses crash. Untuk update, jalankan `git pull`, `npm install`, `npm run build`, lalu `pm2 restart fuel-ledger-api` (via terminal; di aaPanel Anda bisa gunakan tombol restart pada PM2 Manager).
+
+Dengan langkah ini sistem siap dijalankan di lingkungan produksi aaPanel/Ubuntu.
+
 ## Testing
 Backend:
 ```bash
