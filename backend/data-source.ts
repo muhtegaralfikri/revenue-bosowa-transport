@@ -77,5 +77,3 @@ if (type === 'mysql') {
 }
 
 export const AppDataSource = new DataSource(dataSourceOptions);
-
-export default AppDataSource;
