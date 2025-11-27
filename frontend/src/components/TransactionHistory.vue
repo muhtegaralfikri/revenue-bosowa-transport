@@ -350,7 +350,6 @@ const exportToExcel = () => {
     ? `Periode: ${activeRangeLabel.value}`
     : 'Periode: Semua data';
 
-  const stockSummary = summary.value;
   const rows: (string | number)[][] = [];
   const titleRow =
     props.title ||
@@ -364,44 +363,100 @@ const exportToExcel = () => {
   rows.push([periodDescription]);
   rows.push([`Diekspor: ${exportTime}`]);
   rows.push([]);
-  rows.push(['Ringkasan Stok Harian']);
-  rows.push(['Stok Awal', stockSummary?.todayInitialStock ?? 0]);
-  rows.push(['Input', stockSummary?.todayStockIn ?? 0]);
-  rows.push(['Output', stockSummary?.todayStockOut ?? stockSummary?.todayUsage ?? 0]);
-  rows.push(['Stok Akhir', stockSummary?.todayClosingStock ?? stockSummary?.currentStock ?? 0]);
-  rows.push([]);
-  const headerRow = ['No', 'Tanggal', 'Petugas'];
-  if (effectiveType.value === 'ALL') {
-    headerRow.push('Jenis');
-  }
-  headerRow.push('Jumlah (L)', 'Keterangan');
+  const headerRow = ['No', 'Tanggal', 'Petugas', 'Keterangan', 'Output'];
   rows.push(headerRow);
 
   let totalAmount = 0;
+  const uniqueDates = new Set<string>();
   history.value.forEach((item, index) => {
     const amount = Number(item.amount) || 0;
     totalAmount += amount;
+    uniqueDates.add(new Date(item.timestamp).toDateString());
     const columns: (string | number)[] = [
       index + 1,
       formatDate(item.timestamp),
       item.user?.username || '-',
+      item.description || '-',
     ];
-    if (effectiveType.value === 'ALL') {
-      columns.push(item.type === 'IN' ? 'IN' : 'OUT');
-    }
-    columns.push(amount, item.description || '-');
+    columns.push(amount);
     rows.push(columns);
   });
 
   rows.push([]);
-  const totalRow: (string | number)[] = ['', 'Total', ''];
-  if (effectiveType.value === 'ALL') {
-    totalRow.push('');
-  }
-  totalRow.push(totalAmount, '');
+  const totalRow: (string | number)[] = ['', 'Total', '', '', totalAmount];
   rows.push(totalRow);
 
+  const dayCount = uniqueDates.size || 1;
+  const avgRow: (string | number)[] = ['', 'Rata-rata/Hari', '', '', Number((totalAmount / dayCount).toFixed(2))];
+  rows.push(avgRow);
+
   const worksheet = XLSX.utils.aoa_to_sheet(rows);
+  const headerRowIndex = rows.findIndex((r) => r[0] === 'No');
+  const totalRowIndex = rows.findIndex((r) => r[1] === 'Total');
+  const avgRowIndex = rows.findIndex((r) => r[1] === 'Rata-rata/Hari');
+  const amountColIndex = headerRow.indexOf('Output');
+
+  worksheet['!cols'] = [
+    { wch: 6 },  // No
+    { wch: 22 }, // Tanggal
+    { wch: 18 }, // Petugas
+    { wch: 28 }, // Keterangan
+    { wch: 12 }, // Output
+  ];
+
+  if (headerRowIndex >= 0) {
+    worksheet['!autofilter'] = {
+      ref: XLSX.utils.encode_range({
+        s: { r: headerRowIndex, c: 0 },
+        e: { r: headerRowIndex, c: headerRow.length - 1 },
+      }),
+    };
+  }
+
+  const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+  for (let R = range.s.r; R <= range.e.r; R += 1) {
+    for (let C = range.s.c; C <= range.e.c; C += 1) {
+      const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+      const cell = worksheet[cellAddress];
+      if (!cell) continue;
+
+      // Title styling
+      if (R === 0 && C === 0) {
+        cell.s = {
+          font: { bold: true, sz: 14 },
+        };
+      }
+
+      // Header styling
+      if (R === headerRowIndex) {
+        cell.s = {
+          fill: { fgColor: { rgb: '3C4A60' } },
+          font: { color: { rgb: 'FFFFFF' }, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: 'A0AEC0' } },
+            bottom: { style: 'thin', color: { rgb: 'A0AEC0' } },
+            left: { style: 'thin', color: { rgb: 'A0AEC0' } },
+            right: { style: 'thin', color: { rgb: 'A0AEC0' } },
+          },
+        };
+      }
+
+      // Total row styling
+      if (R === totalRowIndex && C === amountColIndex) {
+        cell.s = {
+          font: { bold: true },
+        };
+      }
+
+      // Average row styling
+      if (R === avgRowIndex && C === amountColIndex) {
+        cell.s = {
+          font: { italic: true },
+        };
+      }
+    }
+  }
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Riwayat');
 
