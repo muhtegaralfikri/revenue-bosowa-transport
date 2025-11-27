@@ -126,11 +126,20 @@ export class StockService {
       throw new BadRequestException('Jumlah harus lebih dari 0');
     }
 
+    let stockInTimestamp: Date | undefined;
+    if (createStockInDto.timestamp) {
+      stockInTimestamp = new Date(createStockInDto.timestamp);
+      if (Number.isNaN(stockInTimestamp.getTime())) {
+        throw new BadRequestException('Tanggal penambahan tidak valid.');
+      }
+    }
+
     const newTransaction = this.transactionRepository.create({
       type: 'IN',
       amount: createStockInDto.amount,
       description: createStockInDto.description,
       user: { id: user.id }, // Relasi ke user yang menginput
+      ...(stockInTimestamp ? { timestamp: stockInTimestamp } : {}),
     });
 
     return this.transactionRepository.save(newTransaction);

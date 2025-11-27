@@ -11,6 +11,7 @@ import Card from 'primevue/card';
 import Divider from 'primevue/divider';
 import { useToast } from 'primevue/usetoast';
 import TransactionHistory from '@/components/TransactionHistory.vue';
+import DatePicker from 'primevue/datepicker';
 
 const authStore = useAuthStore();
 const stockStore = useStockStore();
@@ -19,6 +20,7 @@ const toast = useToast();
 // State untuk form
 const amount = ref<number | null>(null);
 const description = ref('');
+const date = ref<Date | null>(new Date());
 const loading = ref(false);
 const stockHistoryRef = ref<InstanceType<typeof TransactionHistory> | null>(null);
 
@@ -53,9 +55,21 @@ const handleSubmit = async () => {
 
   loading.value = true;
   try {
+    const now = new Date();
+    const purchaseDate = date.value ? new Date(date.value) : new Date();
+    if (date.value) {
+      purchaseDate.setHours(
+        now.getHours(),
+        now.getMinutes(),
+        now.getSeconds(),
+        now.getMilliseconds(),
+      );
+    }
+
     await apiClient.post('/stock/in', {
       amount: amount.value,
       description: description.value,
+      timestamp: purchaseDate.toISOString(),
     });
 
     // Berhasil!
@@ -72,6 +86,7 @@ const handleSubmit = async () => {
     // Reset form
     amount.value = null;
     description.value = '';
+    date.value = new Date();
   } catch (error: any) {
     toast.add({
       severity: 'error',
@@ -115,6 +130,19 @@ const handleSubmit = async () => {
           <Divider />
 
           <form @submit.prevent="handleSubmit" class="form-stack">
+            <div>
+              <label for="date">Tanggal Pembelian</label>
+              <DatePicker
+                id="date"
+                v-model="date"
+                dateFormat="dd/mm/yy"
+                showIcon
+                showButtonBar
+                class="w-full"
+                inputClass="w-full"
+              />
+            </div>
+
             <div>
               <label for="amount">Jumlah (Liter)</label>
               <InputNumber
