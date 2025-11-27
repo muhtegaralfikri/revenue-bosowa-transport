@@ -78,7 +78,7 @@ const handleLogin = async () => {
                 id="email"
                 v-model="email"
                 type="email"
-                placeholder="admin@example.com"
+                placeholder="Masukkan email"
                 class="w-full"
               />
             </div>
