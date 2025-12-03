@@ -6,7 +6,7 @@ import Button from 'primevue/button';
 import DatePicker from 'primevue/datepicker';
 import Select from 'primevue/select';
 import InputText from 'primevue/inputtext';
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx-js-style';
 import apiClient from '@/services/api';
 import { useStockStore } from '@/stores/stock.store';
 
@@ -339,6 +339,8 @@ const exportToExcel = () => {
     return;
   }
 
+  const roundAmount = (value: number) => Number(Number(value || 0).toFixed(2));
+
   const now = new Date();
   const exportTime = new Intl.DateTimeFormat('id-ID', {
     dateStyle: 'full',
@@ -363,45 +365,81 @@ const exportToExcel = () => {
   rows.push([periodDescription]);
   rows.push([`Diekspor: ${exportTime}`]);
   rows.push([]);
-  const headerRow = ['No', 'Tanggal', 'Petugas', 'Keterangan', 'Output'];
+  const includeTypeColumn = effectiveType.value === 'ALL';
+  const headerRow = ['No', 'Tanggal', 'Petugas'];
+  if (includeTypeColumn) {
+    headerRow.push('Jenis');
+  }
+  headerRow.push('Keterangan', 'Output');
   rows.push(headerRow);
 
   let totalAmount = 0;
   const uniqueDates = new Set<string>();
   history.value.forEach((item, index) => {
-    const amount = Number(item.amount) || 0;
+    const amount = roundAmount(Number(item.amount) || 0);
     totalAmount += amount;
     uniqueDates.add(new Date(item.timestamp).toDateString());
     const columns: (string | number)[] = [
       index + 1,
       formatDate(item.timestamp),
       item.user?.username || '-',
-      item.description || '-',
     ];
+    if (includeTypeColumn) {
+      columns.push(item.type === 'IN' ? 'IN' : 'OUT');
+    }
+    columns.push(item.description || '-');
     columns.push(amount);
     rows.push(columns);
   });
 
   rows.push([]);
-  const totalRow: (string | number)[] = ['', 'Total', '', '', totalAmount];
-  rows.push(totalRow);
+  const keteranganColIndex = headerRow.indexOf('Keterangan');
+  const amountColIndex = headerRow.indexOf('Output');
+  const makeSummaryRow = (label: string, value: number) => {
+    const row: (string | number)[] = Array(headerRow.length).fill('');
+    if (keteranganColIndex >= 0) {
+      row[keteranganColIndex] = label;
+    }
+    if (amountColIndex >= 0) {
+      row[amountColIndex] = value;
+    }
+    return row;
+  };
+
+  rows.push(makeSummaryRow('Total', totalAmount));
 
   const dayCount = uniqueDates.size || 1;
-  const avgRow: (string | number)[] = ['', 'Rata-rata/Hari', '', '', Number((totalAmount / dayCount).toFixed(2))];
-  rows.push(avgRow);
+  const averageValue = roundAmount(totalAmount / dayCount);
+  rows.push(makeSummaryRow('Rata-rata/Hari', averageValue));
 
   const worksheet = XLSX.utils.aoa_to_sheet(rows);
   const headerRowIndex = rows.findIndex((r) => r[0] === 'No');
-  const totalRowIndex = rows.findIndex((r) => r[1] === 'Total');
-  const avgRowIndex = rows.findIndex((r) => r[1] === 'Rata-rata/Hari');
-  const amountColIndex = headerRow.indexOf('Output');
+  const totalRowIndex = rows.findIndex((r) => r.includes('Total'));
+  const avgRowIndex = rows.findIndex((r) => r.includes('Rata-rata/Hari'));
+  const dataStartRowIndex = headerRowIndex + 1;
+  const dataEndRowIndex = totalRowIndex - 1;
 
   worksheet['!cols'] = [
     { wch: 6 },  // No
     { wch: 22 }, // Tanggal
     { wch: 18 }, // Petugas
+    ...(includeTypeColumn ? [{ wch: 10 }] : []), // Jenis
     { wch: 28 }, // Keterangan
     { wch: 12 }, // Output
+  ];
+
+  worksheet['!rows'] = [
+    { hpt: 22 },
+    { hpt: 18 },
+    { hpt: 18 },
+    { hpt: 8 },
+    { hpt: 22 }, // header
+  ];
+
+  worksheet['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: headerRow.length - 1 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: headerRow.length - 1 } },
+    { s: { r: 2, c: 0 }, e: { r: 2, c: headerRow.length - 1 } },
   ];
 
   if (headerRowIndex >= 0) {
@@ -423,16 +461,60 @@ const exportToExcel = () => {
       // Title styling
       if (R === 0 && C === 0) {
         cell.s = {
-          font: { bold: true, sz: 14 },
+          font: { bold: true, sz: 15, color: { rgb: '0B5D3B' } },
+          alignment: { horizontal: 'left', vertical: 'center' },
+        };
+      }
+      if (R === 1 || R === 2) {
+        cell.s = {
+          font: { color: { rgb: '4A5568' }, sz: 11 },
+          alignment: { horizontal: 'left', vertical: 'center' },
         };
       }
 
       // Header styling
       if (R === headerRowIndex) {
         cell.s = {
-          fill: { fgColor: { rgb: '3C4A60' } },
+          fill: { fgColor: { rgb: '0B5D3B' } }, // deep green
           font: { color: { rgb: 'FFFFFF' }, bold: true },
           alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: 'C7D5C4' } },
+            bottom: { style: 'thin', color: { rgb: 'C7D5C4' } },
+            left: { style: 'thin', color: { rgb: 'C7D5C4' } },
+            right: { style: 'thin', color: { rgb: 'C7D5C4' } },
+          },
+        };
+      }
+
+      // Data rows styling
+      if (R >= dataStartRowIndex && R <= dataEndRowIndex) {
+        const isStripe = (R - dataStartRowIndex) % 2 === 0;
+        cell.s = {
+          alignment: {
+            horizontal: C === amountColIndex ? 'right' : 'left',
+            vertical: 'center',
+          },
+          border: {
+            top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } },
+          },
+          ...(isStripe
+            ? { fill: { fgColor: { rgb: 'F7FAFC' } } }
+            : {}),
+        };
+        if (C === amountColIndex) {
+          cell.z = '#.##0,##';
+        }
+      }
+
+      // Total row styling
+      if (R === totalRowIndex && C === amountColIndex) {
+        cell.s = {
+          font: { bold: true },
+          fill: { fgColor: { rgb: 'E6F4EA' } },
           border: {
             top: { style: 'thin', color: { rgb: 'A0AEC0' } },
             bottom: { style: 'thin', color: { rgb: 'A0AEC0' } },
@@ -440,20 +522,21 @@ const exportToExcel = () => {
             right: { style: 'thin', color: { rgb: 'A0AEC0' } },
           },
         };
-      }
-
-      // Total row styling
-      if (R === totalRowIndex && C === amountColIndex) {
-        cell.s = {
-          font: { bold: true },
-        };
+        cell.z = '#.##0,##';
       }
 
       // Average row styling
       if (R === avgRowIndex && C === amountColIndex) {
         cell.s = {
-          font: { italic: true },
+          font: { italic: true, color: { rgb: '0B5D3B' } },
+          border: {
+            top: { style: 'thin', color: { rgb: 'A0AEC0' } },
+            bottom: { style: 'thin', color: { rgb: 'A0AEC0' } },
+            left: { style: 'thin', color: { rgb: 'A0AEC0' } },
+            right: { style: 'thin', color: { rgb: 'A0AEC0' } },
+          },
         };
+        cell.z = '#.##0,##';
       }
     }
   }
