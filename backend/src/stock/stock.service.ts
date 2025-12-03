@@ -249,11 +249,13 @@ export class StockService {
       type: tx.type,
       amount: Number(tx.amount),
       description: tx.description,
-      user: {
-        id: tx.user.id,
-        username: tx.user.username,
-        email: tx.user.email,
-      },
+      user: tx.user
+        ? {
+            id: tx.user.id,
+            username: tx.user.username,
+            email: tx.user.email,
+          }
+        : null,
     }));
 
     return {
