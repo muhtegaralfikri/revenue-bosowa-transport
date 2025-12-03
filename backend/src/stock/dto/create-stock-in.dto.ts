@@ -8,6 +8,15 @@ import {
   IsOptional,
   IsDateString,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
+
+const toNumber = (value: unknown) => {
+  if (typeof value === 'string') {
+    const normalized = value.replace(',', '.').trim();
+    return Number(normalized);
+  }
+  return value as number;
+};
 
 export class CreateStockInDto {
   @ApiProperty({
@@ -15,6 +24,7 @@ export class CreateStockInDto {
     example: 100.5,
   })
   @IsNotEmpty()
+  @Transform(({ value }) => toNumber(value))
   @IsNumber()
   @IsPositive() // Pastikan angkanya positif
   amount: number;

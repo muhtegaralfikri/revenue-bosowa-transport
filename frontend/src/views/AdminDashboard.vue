@@ -150,6 +150,12 @@ const handleSubmit = async () => {
                 v-model="amount"
                 placeholder="Masukkan jumlah liter"
                 mode="decimal"
+                locale="id-ID"
+                decimalSeparator=","
+                :useGrouping="false"
+                groupSeparator="."
+                :maxFractionDigits="2"
+                :minFractionDigits="0"
                 class="w-full"
               />
             </div>

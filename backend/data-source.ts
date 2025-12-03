@@ -17,6 +17,7 @@ envFiles.forEach((file) => {
 const type = (process.env.DB_TYPE || 'postgres').toLowerCase();
 const logging = process.env.DB_LOGGING === 'true';
 const synchronize = process.env.DB_SYNCHRONIZE === 'true';
+const dbTimezone = process.env.DB_TIMEZONE; // e.g. '+08:00' or 'Z' for UTC
 
 const common: Pick<DataSourceOptions, 'entities' | 'migrations' | 'logging' | 'synchronize'> = {
   entities: [join(__dirname, 'src/**/*.entity{.ts,.js}')],
@@ -36,6 +37,7 @@ if (type === 'mysql') {
     username: process.env.DB_USERNAME || 'root',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'fuel_ledger',
+    ...(dbTimezone ? { timezone: dbTimezone } : {}),
   };
 } else {
   const useSsl = process.env.DB_SSL === 'true';
