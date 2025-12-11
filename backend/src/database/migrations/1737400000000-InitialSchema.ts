@@ -39,7 +39,7 @@ export class InitialSchema1737400000000 implements MigrationInterface {
         columns: [
           {
             name: 'id',
-            type: 'uuid',
+            type: this.uuidType(queryRunner),
             isPrimary: true,
             default: this.uuidDefault(queryRunner),
           },
@@ -89,7 +89,7 @@ export class InitialSchema1737400000000 implements MigrationInterface {
         columns: [
           {
             name: 'id',
-            type: 'uuid',
+            type: this.uuidType(queryRunner),
             isPrimary: true,
             default: this.uuidDefault(queryRunner),
           },
@@ -116,7 +116,7 @@ export class InitialSchema1737400000000 implements MigrationInterface {
           },
           {
             name: 'user_id',
-            type: 'uuid',
+            type: this.uuidType(queryRunner),
           },
         ],
       }),
@@ -139,7 +139,7 @@ export class InitialSchema1737400000000 implements MigrationInterface {
         columns: [
           {
             name: 'id',
-            type: 'uuid',
+            type: this.uuidType(queryRunner),
             isPrimary: true,
             default: this.uuidDefault(queryRunner),
           },
@@ -163,7 +163,7 @@ export class InitialSchema1737400000000 implements MigrationInterface {
           },
           {
             name: 'user_id',
-            type: 'uuid',
+            type: this.uuidType(queryRunner),
           },
         ],
       }),
@@ -188,14 +188,23 @@ export class InitialSchema1737400000000 implements MigrationInterface {
     await queryRunner.dropTable('roles', true);
   }
 
-  private uuidDefault(queryRunner: QueryRunner) {
+  private uuidType(queryRunner: QueryRunner): string {
+    const driver = queryRunner.connection.options.type;
+    if (driver === 'postgres') {
+      return 'uuid';
+    }
+    return 'varchar(36)';
+  }
+
+  private uuidDefault(queryRunner: QueryRunner): string | undefined {
     const driver = queryRunner.connection.options.type;
     if (driver === 'postgres') {
       return 'uuid_generate_v4()';
     }
-    if (driver === 'mysql') {
+    if (driver === 'mariadb') {
       return 'UUID()';
     }
-    return 'uuid()';
+    // MySQL 5.7 doesn't support UUID() as default, generate in application
+    return undefined;
   }
 }
