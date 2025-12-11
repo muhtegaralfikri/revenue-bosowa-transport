@@ -92,7 +92,7 @@ export class AuthService {
 
     const stored = await this.refreshTokenRepository.findOne({
       where: { id: tokenId },
-      relations: ['user', 'user.role'],
+      relations: ['user'],
     });
 
     if (
@@ -137,7 +137,6 @@ export class AuthService {
     const payload = {
       username: user.username,
       sub: user.id,
-      role: user.role.name,
     };
     return this.jwtService.sign(payload);
   }
@@ -168,7 +167,6 @@ export class AuthService {
       id: user.id,
       username: user.username,
       email: user.email,
-      role: user.role?.name,
     };
   }
 

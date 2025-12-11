@@ -35,25 +35,25 @@ const handleLogin = async () => {
   <section class="auth-page">
     <div class="auth-page__inner">
       <div class="auth-page__hero">
-        <p class="eyebrow">Fuel Ledger System</p>
-        <h1>Catat stok & pemakaian bensin dengan presisi.</h1>
+        <p class="eyebrow">Revenue Monitoring System</p>
+        <h1>Pantau realisasi pendapatan secara real-time.</h1>
         <p class="subtitle">
-          Platform terintegrasi untuk tim admin & operasional Bosowa. Data real time,
-          approval jelas, audit trail otomatis.
+          Platform terintegrasi untuk monitoring target & realisasi pendapatan 
+          Bosowa Bandar Group. Data akurat, laporan lengkap.
         </p>
 
         <ul class="hero-stats">
           <li>
-            <span class="stat-label">98%</span>
-            <p>Pencatatan tersinkron dalam 1 jam terakhir.</p>
+            <span class="stat-label">3</span>
+            <p>Perusahaan dalam satu dashboard terpadu.</p>
           </li>
           <li>
             <span class="stat-label">24/7</span>
-            <p>Pemantauan stok & konsumsi di dashboard.</p>
+            <p>Pemantauan target & realisasi harian.</p>
           </li>
           <li>
-            <span class="stat-label">Audit</span>
-            <p>Jejak lengkap untuk inspeksi internal.</p>
+            <span class="stat-label">Trend</span>
+            <p>Analisis tren pendapatan bulanan.</p>
           </li>
         </ul>
       </div>
@@ -118,7 +118,7 @@ const handleLogin = async () => {
 
           <div class="help-text">
             <i class="pi pi-info-circle mr-2" />
-            Perlu akses baru? Hubungi administrator Bosowa Fuel Ledger.
+            Perlu akses baru? Hubungi administrator Bosowa Bandar Group.
           </div>
         </template>
       </Card>

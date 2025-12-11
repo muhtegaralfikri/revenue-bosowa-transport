@@ -28,15 +28,15 @@ const common: Pick<DataSourceOptions, 'entities' | 'migrations' | 'logging' | 's
 
 let dataSourceOptions: DataSourceOptions;
 
-if (type === 'mysql') {
+if (type === 'mysql' || type === 'mariadb') {
   dataSourceOptions = {
     ...common,
-    type: 'mysql',
+    type: 'mariadb',
     host: process.env.DB_HOST || '127.0.0.1',
     port: Number(process.env.DB_PORT || 3306),
     username: process.env.DB_USERNAME || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'fuel_ledger',
+    database: process.env.DB_NAME || 'revenue',
     ...(dbTimezone ? { timezone: dbTimezone } : {}),
   };
 } else {
@@ -48,7 +48,7 @@ if (type === 'mysql') {
     port: Number(process.env.DB_PORT || 5432),
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
-    database: process.env.DB_NAME || 'fuel_ledger',
+    database: process.env.DB_NAME || 'revenue',
   };
   const databaseUrl = process.env.DATABASE_URL;
   if (databaseUrl) {

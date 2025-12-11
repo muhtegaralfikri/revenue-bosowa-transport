@@ -1,10 +1,7 @@
-// Buka file: /backend/src/main.ts
-
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-// Import Swagger
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { ValidationPipe } from '@nestjs/common'; // <-- Impor
+import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
@@ -25,8 +22,9 @@ async function bootstrap() {
       credentials: true,
     });
   }
-  app.useGlobalPipes(new ValidationPipe()); // <-- TAMBAHKAN INI
-  // --- Mulai Konfigurasi Swagger ---
+
+  app.useGlobalPipes(new ValidationPipe());
+
   const swaggerEnabledEnv = configService.get<string>('ENABLE_SWAGGER');
   const isSwaggerEnabled =
     swaggerEnabledEnv === 'true' ||
@@ -34,22 +32,20 @@ async function bootstrap() {
 
   if (isSwaggerEnabled) {
     const config = new DocumentBuilder()
-      .setTitle('Fuel Ledger System API')
-      .setDescription('Dokumentasi API untuk Sistem Manajemen Stok Bahan Bakar Bosowa')
+      .setTitle('Revenue Monitoring System API')
+      .setDescription('API untuk Sistem Monitoring Pendapatan Bosowa Bandar Group')
       .setVersion('1.0')
-      .addTag('stock', 'Operasi manajemen stok')
+      .addTag('revenue', 'Operasi monitoring pendapatan')
       .addTag('auth', 'Autentikasi Pengguna')
-      // Kita tambahkan ini nanti saat implementasi JWT
+      .addTag('users', 'Manajemen Pengguna')
       .addBearerAuth()
       .build();
 
     const document = SwaggerModule.createDocument(app, config);
-    // 'api/docs' adalah path untuk mengakses UI Swagger-nya
     SwaggerModule.setup('api/docs', app, document);
-    // --- Selesai Konfigurasi Swagger ---
   }
 
   const port = parseInt(configService.get<string>('APP_PORT', '3000'), 10);
-  await app.listen(port); // Atau port lain, misal 3001
+  await app.listen(port);
 }
 bootstrap();

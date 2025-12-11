@@ -1,94 +1,122 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useStockStore } from '@/stores/stock.store';
+import { useRevenueStore } from '@/stores/revenue.store';
 import Card from 'primevue/card';
 import Skeleton from 'primevue/skeleton';
-import Message from 'primevue/message';
+import Select from 'primevue/select';
 import BaseChart from '@/components/BaseChart.vue';
 import type { ChartData, ChartOptions } from 'chart.js';
 
-const stockStore = useStockStore();
-const {
-  summary,
-  loading,
-  error,
-  trend,
-  trendLoading,
-  trendError,
-  inOutTrend,
-  inOutTrendLoading,
-  inOutTrendError,
-} = storeToRefs(stockStore);
+const revenueStore = useRevenueStore();
+const { summary, trend, loading } = storeToRefs(revenueStore);
 
+// Filter bulan & tahun
+const currentDate = new Date();
+const selectedMonth = ref(currentDate.getMonth() + 1);
+const selectedYear = ref(currentDate.getFullYear());
+
+const months = [
+  { label: 'Januari', value: 1 },
+  { label: 'Februari', value: 2 },
+  { label: 'Maret', value: 3 },
+  { label: 'April', value: 4 },
+  { label: 'Mei', value: 5 },
+  { label: 'Juni', value: 6 },
+  { label: 'Juli', value: 7 },
+  { label: 'Agustus', value: 8 },
+  { label: 'September', value: 9 },
+  { label: 'Oktober', value: 10 },
+  { label: 'November', value: 11 },
+  { label: 'Desember', value: 12 },
+];
+
+const years = computed(() => {
+  const currentYear = new Date().getFullYear();
+  return Array.from({ length: 5 }, (_, i) => ({
+    label: String(currentYear - i),
+    value: currentYear - i,
+  }));
+});
+
+// Mobile detection
+const isMobile = ref(window.innerWidth <= 576);
+
+function handleResize() {
+  isMobile.value = window.innerWidth <= 576;
+}
+
+// Fetch data on mount and when filter changes
 onMounted(() => {
-  stockStore.fetchSummary();
-  stockStore.fetchTrend(7);
-  stockStore.fetchInOutTrend(7);
-  stockStore.startPolling();
+  fetchData();
+  window.addEventListener('resize', handleResize);
 });
 
 onUnmounted(() => {
-  stockStore.stopPolling();
+  window.removeEventListener('resize', handleResize);
 });
 
-const formatLiters = (value?: number | null) => {
-  if (value === undefined || value === null) return '0 Liter';
-  return `${value.toLocaleString('id-ID', {
+watch([selectedMonth, selectedYear], () => {
+  fetchData();
+});
+
+function fetchData() {
+  revenueStore.fetchSummary(selectedYear.value, selectedMonth.value);
+  revenueStore.fetchTrend(selectedYear.value, selectedMonth.value);
+}
+
+// Format Rupiah
+const formatRupiah = (value?: number | null) => {
+  if (value === undefined || value === null) return 'Rp 0';
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  })} Liter`;
+    maximumFractionDigits: 0,
+  }).format(value);
+};
+
+const accentColors: Record<string, string> = {
+  BBI: 'text-blue-600',
+  BBA: 'text-green-600',
+  JAPELIN: 'text-orange-600',
 };
 
 const summaryCards = computed(() => {
-  const data = summary.value;
-  return [
-    {
-      key: 'opening',
-      title: 'Stok Awal Hari Ini',
-      accent: 'text-gray-700',
-      value: data?.todayInitialStock ?? null,
-    },
-    {
-      key: 'in',
-      title: 'Input Hari Ini',
-      accent: 'text-green-600',
-      value: data?.todayStockIn ?? null,
-    },
-    {
-      key: 'out',
-      title: 'Output Hari Ini',
-      accent: 'text-orange-600',
-      value: data?.todayStockOut ?? data?.todayUsage ?? null,
-    },
-    {
-      key: 'closing',
-      title: 'Stok Akhir Hari Ini',
-      accent: 'text-blue-600',
-      value: data?.todayClosingStock ?? data?.currentStock ?? null,
-    },
-  ];
+  if (!summary.value?.companies) return [];
+  return summary.value.companies.map((item) => ({
+    key: item.company.code,
+    title: item.company.name,
+    realisasi: item.today.realisasi,
+    target: item.today.target,
+    percentage: item.today.percentage,
+    monthRealisasi: item.month.realisasi,
+    monthTarget: item.month.target,
+    monthPercentage: item.month.percentage,
+    accent: accentColors[item.company.code] || 'text-gray-600',
+  }));
 });
 
+const chartColors: Record<string, string> = {
+  BBI: '#3B82F6',
+  BBA: '#22C55E',
+  JAPELIN: '#F97316',
+};
+
 const trendChartData = computed<ChartData<'line'> | null>(() => {
-  if (!trend.value?.points?.length) return null;
+  if (!trend.value?.labels) return null;
   return {
-    labels: trend.value.points.map((point) => point.label),
-    datasets: [
-      {
-        label: 'Stok Akhir',
-        data: trend.value.points.map((point) => point.closingStock),
-        tension: 0.35,
-        fill: true,
-        borderColor: '#1e468c',
-        backgroundColor: 'rgba(30, 70, 140, 0.15)',
-        pointRadius: 3,
-        pointBackgroundColor: '#1e468c',
-        pointBorderColor: '#ffffff',
-        borderWidth: 2,
-        type: 'line' as const,
-      },
-    ],
+    labels: trend.value.labels,
+    datasets: trend.value.datasets.map((ds) => ({
+      label: isMobile.value ? ds.company : ds.companyName,
+      data: ds.data,
+      tension: 0.35,
+      fill: false,
+      borderColor: chartColors[ds.company] || '#6B7280',
+      backgroundColor: chartColors[ds.company] || '#6B7280',
+      pointRadius: 3,
+      borderWidth: 2,
+    })),
   };
 });
 
@@ -97,13 +125,77 @@ const trendChartOptions = computed<ChartOptions<'line'>>(() => ({
   maintainAspectRatio: false,
   plugins: {
     legend: {
-      display: false,
+      position: 'top',
     },
     tooltip: {
       callbacks: {
         label: (ctx: any) => {
           const value = ctx.parsed.y ?? 0;
-          return `Stok: ${value.toLocaleString('id-ID')} L`;
+          return `${ctx.dataset.label}: Rp ${(value * 1000000).toLocaleString('id-ID')}`;
+        },
+      },
+    },
+  },
+  scales: {
+    x: {
+      grid: {
+        display: false,
+      },
+      title: {
+        display: true,
+        text: 'Tanggal',
+      },
+    },
+    y: {
+      beginAtZero: true,
+      title: {
+        display: true,
+        text: 'Juta Rupiah',
+      },
+      ticks: {
+        callback: (value: any) => `${Number(value).toLocaleString('id-ID')} Jt`,
+      },
+    },
+  },
+}));
+
+// Chart perbandingan target vs realisasi (bulanan)
+const comparisonChartData = computed<ChartData<'bar'> | null>(() => {
+  if (!summary.value?.companies) return null;
+  return {
+    labels: summary.value.companies.map((c) => isMobile.value ? c.company.code : c.company.name),
+    datasets: [
+      {
+        label: 'Target Bulanan',
+        data: summary.value.companies.map((c) => c.month.target / 1000000),
+        backgroundColor: 'rgba(156, 163, 175, 0.7)',
+        borderColor: 'rgba(107, 114, 128, 1)',
+        borderWidth: 1,
+      },
+      {
+        label: 'Realisasi Bulanan',
+        data: summary.value.companies.map((c) => c.month.realisasi / 1000000),
+        backgroundColor: 'rgba(34, 197, 94, 0.7)',
+        borderColor: 'rgba(22, 163, 74, 1)',
+        borderWidth: 1,
+      },
+    ],
+  };
+});
+
+const comparisonChartOptions = computed<ChartOptions<'bar'>>(() => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'top',
+    },
+    tooltip: {
+      callbacks: {
+        label: (ctx: any) => {
+          const label = ctx.dataset.label || '';
+          const value = ctx.parsed.y ?? 0;
+          return `${label}: Rp ${(value * 1000000).toLocaleString('id-ID')}`;
         },
       },
     },
@@ -116,64 +208,12 @@ const trendChartOptions = computed<ChartOptions<'line'>>(() => ({
     },
     y: {
       beginAtZero: true,
+      title: {
+        display: true,
+        text: 'Juta Rupiah',
+      },
       ticks: {
-        callback: (value: any) =>
-          `${Number(value).toLocaleString('id-ID')} L`,
-      },
-    },
-  },
-}));
-const inOutChartData = computed<ChartData<'bar'> | null>(() => {
-  if (!inOutTrend.value?.points?.length) return null;
-  return {
-    labels: inOutTrend.value.points.map((point) => point.label),
-    datasets: [
-      {
-        type: 'bar' as const,
-        label: 'Penambahan (IN)',
-        data: inOutTrend.value.points.map((point) => point.totalIn),
-        backgroundColor: 'rgba(34, 197, 94, 0.7)',
-        borderColor: 'rgba(22, 163, 74, 1)',
-        borderWidth: 1,
-      },
-      {
-        type: 'bar' as const,
-        label: 'Pemakaian (OUT)',
-        data: inOutTrend.value.points.map((point) => point.totalOut),
-        backgroundColor: 'rgba(249, 115, 22, 0.7)',
-        borderColor: 'rgba(234, 88, 12, 1)',
-        borderWidth: 1,
-      },
-    ],
-  };
-});
-
-const inOutChartOptions = computed<ChartOptions<'bar'>>(() => ({
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: 'top',
-    },
-    tooltip: {
-      callbacks: {
-        label: (ctx: any) => {
-          const label = ctx.dataset.label || '';
-          const value = ctx.parsed.y ?? ctx.parsed ?? 0;
-          return `${label}: ${value.toLocaleString('id-ID')} L`;
-        },
-      },
-    },
-  },
-  scales: {
-    x: {
-      stacked: false,
-    },
-    y: {
-      beginAtZero: true,
-      ticks: {
-        callback: (value: any) =>
-          `${Number(value).toLocaleString('id-ID')} L`,
+        callback: (value: any) => `${Number(value).toLocaleString('id-ID')} Jt`,
       },
     },
   },
@@ -181,109 +221,262 @@ const inOutChartOptions = computed<ChartOptions<'bar'>>(() => ({
 </script>
 
 <template>
-  <div class="p-4">
-    <div class="grid summary-grid">
+  <div class="home-container">
+    <!-- Filter Bulan & Tahun -->
+    <div class="filter-section">
+      <div class="filter-item">
+        <label class="font-medium">Bulan:</label>
+        <Select
+          v-model="selectedMonth"
+          :options="months"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Pilih Bulan"
+          class="filter-select"
+        />
+      </div>
+      <div class="filter-item">
+        <label class="font-medium">Tahun:</label>
+        <Select
+          v-model="selectedYear"
+          :options="years"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Pilih Tahun"
+          class="filter-select"
+        />
+      </div>
+    </div>
+
+    <!-- 3 Summary Cards -->
+    <div class="summary-cards">
       <div
         v-for="metric in summaryCards"
         :key="metric.key"
-        class="col-12 sm:col-6 lg:col-3"
+        class="summary-card-item"
       >
         <Card>
-          <template #title>{{ metric.title }}</template>
+          <template #title>
+            <span class="card-title card-title-full">{{ metric.title }}</span>
+            <span class="card-title card-title-short">{{ metric.key }}</span>
+          </template>
           <template #content>
             <div v-if="loading">
               <Skeleton height="2rem" class="mb-2" />
             </div>
-            <div v-else-if="summary">
-              <h2 class="text-3xl font-bold" :class="metric.accent">
-                {{ formatLiters(metric.value) }}
-              </h2>
-            </div>
             <div v-else>
-              <small class="text-color-secondary">Belum ada data stok.</small>
+              <h2 class="realisasi-value" :class="metric.accent">
+                {{ formatRupiah(metric.realisasi) }}
+              </h2>
+              <div class="today-info">
+                <span class="text-color-secondary">Hari ini:</span>
+                <span 
+                  class="font-semibold"
+                  :class="metric.percentage >= 100 ? 'text-green-600' : 'text-red-600'"
+                >
+                  {{ metric.percentage }}%
+                </span>
+                <i 
+                  :class="metric.percentage >= 100 ? 'pi pi-arrow-up text-green-600' : 'pi pi-arrow-down text-red-600'"
+                />
+              </div>
             </div>
           </template>
         </Card>
       </div>
     </div>
 
-    <div v-if="error" class="col-12 mt-4">
-      <Message severity="error">{{ error }}</Message>
-      </div>
+    <!-- Charts -->
+    <div class="charts-section">
+      <Card>
+        <template #title>
+          <span class="card-title">Tren Realisasi Harian</span>
+        </template>
+        <template #content>
+          <div v-if="trendChartData">
+            <div class="chart-wrapper">
+              <BaseChart
+                type="line"
+                :data="trendChartData"
+                :options="trendChartOptions"
+              />
+            </div>
+          </div>
+          <div v-else>
+            <small class="text-color-secondary">
+              Belum ada data tren untuk ditampilkan.
+            </small>
+          </div>
+        </template>
+      </Card>
 
-    <div class="grid mt-4">
-      <div class="col-12">
-        <Card>
-          <template #title>Tren Stok 7 Hari Terakhir</template>
-          <template #content>
-            <div v-if="trendLoading">
-              <Skeleton height="260px" />
+      <Card class="mt-3">
+        <template #title>
+          <span class="card-title">Perbandingan Target vs Realisasi</span>
+        </template>
+        <template #content>
+          <div v-if="comparisonChartData">
+            <div class="chart-wrapper">
+              <BaseChart
+                type="bar"
+                :data="comparisonChartData"
+                :options="comparisonChartOptions"
+              />
             </div>
-            <div v-else-if="trendError">
-              <Message severity="warn">{{ trendError }}</Message>
-            </div>
-            <div v-else-if="trendChartData">
-              <div class="trend-chart-wrapper">
-                <BaseChart
-                  type="line"
-                  :data="trendChartData"
-                  :options="trendChartOptions"
-                />
-              </div>
-            </div>
-            <div v-else>
-              <small class="text-color-secondary">
-                Belum ada data tren untuk ditampilkan.
-              </small>
-            </div>
-          </template>
-        </Card>
-      </div>
-
-      <div class="col-12">
-        <Card>
-          <template #title>Perbandingan Penambahan vs Pemakaian (7 Hari)</template>
-          <template #content>
-            <div v-if="inOutTrendLoading">
-              <Skeleton height="260px" />
-            </div>
-            <div v-else-if="inOutTrendError">
-              <Message severity="warn">{{ inOutTrendError }}</Message>
-            </div>
-            <div v-else-if="inOutChartData">
-              <div class="trend-chart-wrapper">
-                <BaseChart
-                  type="bar"
-                  :data="inOutChartData"
-                  :options="inOutChartOptions"
-                />
-              </div>
-            </div>
-            <div v-else>
-              <small class="text-color-secondary">
-                Belum ada data perbandingan untuk ditampilkan.
-              </small>
-            </div>
-          </template>
-        </Card>
-      </div>
+          </div>
+          <div v-else>
+            <small class="text-color-secondary">
+              Belum ada data perbandingan untuk ditampilkan.
+            </small>
+          </div>
+        </template>
+      </Card>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* Kita bisa tambahkan style kustom di sini jika perlu */
-.p-card {
-  /* Memberi bayangan & tepian bulat yang konsisten */
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  border-radius: 8px;
-}
-h2 {
-  margin: 0; /* Hapus margin default browser */
+.home-container {
+  padding: 1rem;
 }
 
-.trend-chart-wrapper {
+/* Filter Section */
+.filter-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-select {
+  width: 8rem;
+}
+
+/* Summary Cards */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.summary-card-item {
+  min-width: 0;
+}
+
+.p-card {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  height: 100%;
+}
+
+.card-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.card-title-full {
+  display: inline;
+}
+
+.card-title-short {
+  display: none;
+}
+
+.realisasi-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  word-break: break-word;
+}
+
+.today-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  flex-wrap: wrap;
+}
+
+/* Charts Section */
+.charts-section {
+  margin-top: 1rem;
+}
+
+.chart-wrapper {
   width: 100%;
   height: 260px;
+}
+
+/* Tablet */
+@media (max-width: 992px) {
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Mobile */
+@media (max-width: 576px) {
+  .home-container {
+    padding: 0.75rem;
+  }
+
+  .filter-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-item {
+    justify-content: space-between;
+  }
+
+  .filter-select {
+    width: 100%;
+    flex: 1;
+  }
+
+  .summary-cards {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .card-title-full {
+    display: none;
+  }
+
+  .card-title-short {
+    display: inline;
+    font-size: 0.9rem;
+  }
+
+  .realisasi-value {
+    font-size: 1.1rem;
+  }
+
+  .today-info {
+    font-size: 0.8rem;
+  }
+
+  .chart-wrapper {
+    height: 220px;
+  }
+
+  :deep(.p-card-title) {
+    font-size: 0.95rem;
+  }
+
+  :deep(.p-card-body) {
+    padding: 0.75rem;
+  }
+
+  :deep(.p-card-content) {
+    padding: 0;
+  }
 }
 </style>

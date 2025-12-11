@@ -1,4 +1,3 @@
-// /frontend/src/stores/auth.store.ts
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
@@ -9,7 +8,6 @@ interface UserPayload {
   id: string;
   username: string;
   email: string;
-  role: 'admin' | 'operasional';
 }
 
 interface AuthSessionResponse {
@@ -27,8 +25,6 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<UserPayload | null>(cachedUser ? JSON.parse(cachedUser) : null);
 
   const isAuthenticated = computed(() => !!token.value);
-  const isAdmin = computed(() => user.value?.role === 'admin');
-  const isOperasional = computed(() => user.value?.role === 'operasional');
 
   if (token.value) {
     setAuthHeader(token.value);
@@ -75,12 +71,7 @@ export const useAuthStore = defineStore('auth', () => {
         password,
       });
       applySession(data);
-
-      if (data.user.role === 'admin') {
-        router.push('/dashboard/admin');
-      } else {
-        router.push('/dashboard/operasional');
-      }
+      router.push('/');
     } catch (error) {
       console.error('Login failed:', error);
       throw new Error('Email atau password salah.');
@@ -93,7 +84,6 @@ export const useAuthStore = defineStore('auth', () => {
         await apiClient.post('/auth/logout');
       }
     } catch (error) {
-      // Jika logout gagal cukup bersihkan sisi klien
       console.warn('Failed to revoke tokens on logout', error);
     }
     clearSession();
@@ -116,7 +106,6 @@ export const useAuthStore = defineStore('auth', () => {
       const decoded = jwtDecode<{ exp?: number }>(accessToken);
       if (!decoded.exp) return false;
       const expiresAt = decoded.exp * 1000;
-      // Grace period 5 detik supaya request tidak keburu 401
       return Date.now() + 5000 >= expiresAt;
     } catch (error) {
       return true;
@@ -124,9 +113,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function checkAuth() {
-    if (!token.value) {
-      return;
-    }
+    if (!token.value) return;
 
     if (isTokenExpired(token.value)) {
       try {
@@ -166,8 +153,6 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     user,
     isAuthenticated,
-    isAdmin,
-    isOperasional,
     login,
     logout,
     checkAuth,

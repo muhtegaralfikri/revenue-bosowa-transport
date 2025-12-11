@@ -60,11 +60,10 @@ describe('AuthService', () => {
         email: 'admin@example.com',
         username: 'Admin',
         password: hashed,
-        role: { name: 'admin' },
       });
 
       const payload = await service.validateUser('admin@example.com', 'password123');
-      expect(payload).toMatchObject({ email: 'admin@example.com', role: { name: 'admin' } });
+      expect(payload).toMatchObject({ email: 'admin@example.com' });
     });
 
     it('returns null for invalid password', async () => {
@@ -89,7 +88,6 @@ describe('AuthService', () => {
         id: 'user-1',
         email: 'admin@example.com',
         username: 'Admin',
-        role: { name: 'admin' },
       });
 
       const result = await service.login({ id: 'user-1' } as any);
@@ -97,11 +95,9 @@ describe('AuthService', () => {
       expect(jwtServiceMock.sign).toHaveBeenCalledWith({
         username: 'Admin',
         sub: 'user-1',
-        role: 'admin',
       });
       expect(result.accessToken).toBe('access-jwt');
       expect(result.refreshToken).toContain('token-id.');
-      expect(result.user.role).toBe('admin');
       expect(result.expiresIn).toBe(86400);
 
       randomSpy.mockRestore();

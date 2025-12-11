@@ -35,12 +35,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User tidak ditemukan');
     }
 
-    // Data yang kita 'return' di sini akan disisipkan ke
-    // object 'req.user' di semua endpoint yang terproteksi
     return {
       id: payload.sub,
       username: payload.username,
-      role: payload.role,
     };
   }
 }

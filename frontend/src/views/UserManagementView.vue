@@ -3,7 +3,6 @@ import { reactive, ref, onMounted } from 'vue';
 import Card from 'primevue/card';
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
-import Select from 'primevue/select';
 import Button from 'primevue/button';
 import Message from 'primevue/message';
 import Skeleton from 'primevue/skeleton';
@@ -15,7 +14,6 @@ interface UserItem {
   id: string;
   username: string;
   email: string;
-  role: string;
   createdAt: string;
 }
 
@@ -25,16 +23,10 @@ const users = ref<UserItem[]>([]);
 const listLoading = ref(true);
 const listError = ref<string | null>(null);
 
-const roleOptions = [
-  { label: 'Admin', value: 'admin' },
-  { label: 'Operasional', value: 'operasional' },
-];
-
 const createForm = reactive({
   username: '',
   email: '',
   password: '',
-  role: 'admin' as 'admin' | 'operasional',
 });
 const createLoading = ref(false);
 
@@ -44,7 +36,6 @@ const editForm = reactive({
   username: '',
   email: '',
   password: '',
-  role: 'operasional' as 'admin' | 'operasional',
 });
 const editLoading = ref(false);
 
@@ -60,7 +51,6 @@ const resetCreateForm = () => {
   createForm.username = '';
   createForm.email = '';
   createForm.password = '';
-  createForm.role = 'admin';
 };
 
 const fetchUsers = async () => {
@@ -94,7 +84,6 @@ const handleCreate = async () => {
       username: createForm.username,
       email: createForm.email,
       password: createForm.password,
-      role: createForm.role,
     });
     toast.add({
       severity: 'success',
@@ -120,7 +109,6 @@ const openEdit = (user: UserItem) => {
   editTargetId.value = user.id;
   editForm.username = user.username;
   editForm.email = user.email;
-  editForm.role = (user.role as 'admin' | 'operasional') ?? 'operasional';
   editForm.password = '';
   editDialogVisible.value = true;
 };
@@ -141,7 +129,6 @@ const handleEdit = async () => {
     const payload: Record<string, string> = {
       username: editForm.username,
       email: editForm.email,
-      role: editForm.role,
     };
     if (editForm.password) {
       payload.password = editForm.password;
@@ -241,17 +228,6 @@ onMounted(() => {
                 class="w-full"
               />
             </div>
-            <div class="form-field">
-              <label for="create-role">Peran</label>
-              <Select
-                id="create-role"
-                v-model="createForm.role"
-                :options="roleOptions"
-                optionLabel="label"
-                optionValue="value"
-                class="w-full"
-              />
-            </div>
             <Button
               type="submit"
               label="Simpan Pengguna"
@@ -280,14 +256,13 @@ onMounted(() => {
                 <tr>
                   <th>Nama</th>
                   <th>Email</th>
-                  <th>Peran</th>
                   <th>Dibuat</th>
                   <th class="actions-col">Aksi</th>
                 </tr>
               </thead>
               <tbody v-if="listLoading">
                 <tr>
-                  <td colspan="5">
+                  <td colspan="4">
                     <Skeleton height="2rem" class="mb-2" />
                     <Skeleton height="2rem" class="mb-2" />
                   </td>
@@ -295,7 +270,7 @@ onMounted(() => {
               </tbody>
               <tbody v-else-if="users.length === 0">
                 <tr>
-                  <td colspan="5" class="empty-state">
+                  <td colspan="4" class="empty-state">
                     Belum ada pengguna lain.
                   </td>
                 </tr>
@@ -306,17 +281,6 @@ onMounted(() => {
                     <span class="user-name">{{ user.username }}</span>
                   </td>
                   <td>{{ user.email }}</td>
-                  <td>
-                    <span
-                      class="role-chip"
-                      :class="{
-                        'role-chip--admin': user.role === 'admin',
-                        'role-chip--op': user.role === 'operasional',
-                      }"
-                    >
-                      {{ user.role }}
-                    </span>
-                  </td>
                   <td>{{ formatDate(user.createdAt) }}</td>
                   <td class="actions-col">
                     <Button
@@ -374,17 +338,6 @@ onMounted(() => {
             :feedback="false"
             class="w-full"
             placeholder="Biarkan kosong jika tidak diganti"
-          />
-        </div>
-        <div>
-          <label for="edit-role">Peran</label>
-          <Select
-            id="edit-role"
-            v-model="editForm.role"
-            :options="roleOptions"
-            optionLabel="label"
-            optionValue="value"
-            class="w-full"
           />
         </div>
         <div class="dialog-actions">
@@ -451,25 +404,6 @@ onMounted(() => {
 
 .user-name {
   font-weight: 600;
-}
-
-.role-chip {
-  display: inline-flex;
-  padding: 0.25rem 0.65rem;
-  border-radius: 999px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-transform: capitalize;
-}
-
-.role-chip--admin {
-  background: rgba(99, 102, 241, 0.15);
-  color: #4338ca;
-}
-
-.role-chip--op {
-  background: rgba(16, 185, 129, 0.15);
-  color: #047857;
 }
 
 .actions-col {

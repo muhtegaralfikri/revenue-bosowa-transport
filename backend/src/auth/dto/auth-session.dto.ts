@@ -2,7 +2,6 @@ export interface AuthenticatedUserDto {
   id: string;
   username: string;
   email: string;
-  role: string;
 }
 
 export interface AuthSessionDto {

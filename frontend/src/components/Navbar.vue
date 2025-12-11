@@ -9,65 +9,31 @@ const router = useRouter();
 const authStore = useAuthStore();
 
 const menuItems = computed(() => {
-  const items = [
+  const items: any[] = [
     {
       label: 'Beranda',
-      command: () => {
-        router.push('/');
-      },
+      command: () => router.push('/'),
     },
   ];
 
-  if (authStore.isAdmin) {
-    items.push(
-      {
-        label: 'Dashboard',
-        command: () => {
-          router.push('/dashboard/admin');
-        },
-      },
-      {
-        label: 'Kelola User',
-        command: () => {
-          router.push('/dashboard/admin/users');
-        },
-      },
-    );
-  }
-
-  if (authStore.isOperasional) {
+  if (authStore.isAuthenticated) {
     items.push({
-      label: 'Dashboard',
-      command: () => {
-        router.push('/dashboard/operasional');
-      },
+      label: 'Kelola User',
+      command: () => router.push('/users'),
+    });
+    items.push({
+      label: 'Log Out',
+      command: () => authStore.logout(),
+    });
+  } else {
+    items.push({
+      label: 'Log In',
+      command: () => router.push('/login'),
     });
   }
 
-  items.push(
-    authStore.isAuthenticated
-      ? {
-          label: 'Log Out',
-          command: handleLogout,
-        }
-      : {
-          label: 'Log In',
-          command: goToLogin,
-        },
-  );
-
   return items;
 });
-
-// Navigasi ke Halaman Login
-const goToLogin = () => {
-  router.push('/login');
-};
-
-// Panggil action logout dari store
-const handleLogout = async () => {
-  await authStore.logout();
-};
 </script>
 
 <template>
