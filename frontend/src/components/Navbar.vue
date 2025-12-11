@@ -22,6 +22,10 @@ const menuItems = computed(() => {
       command: () => router.push('/input'),
     });
     items.push({
+      label: 'Riwayat',
+      command: () => router.push('/history'),
+    });
+    items.push({
       label: 'Kelola User',
       command: () => router.push('/users'),
     });
@@ -43,7 +47,7 @@ const menuItems = computed(() => {
 <template>
   <header class="navbar-shell">
     <button class="brand" type="button" @click="router.push('/')">
-      <img :src="logoSrc" alt="Bosowa Fuel" class="brand__logo" />
+      <img :src="logoSrc" alt="Bosowa Revenue" class="brand__logo" />
     </button>
 
     <div class="nav-group">

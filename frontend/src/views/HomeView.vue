@@ -9,12 +9,23 @@ import BaseChart from '@/components/BaseChart.vue';
 import type { ChartData, ChartOptions } from 'chart.js';
 
 const revenueStore = useRevenueStore();
-const { summary, trend, yearlyComparison, loading } = storeToRefs(revenueStore);
+const { summary, trend, yearlyComparison, companies, loading } = storeToRefs(revenueStore);
 
 // Filter bulan & tahun
 const currentDate = new Date();
 const selectedMonth = ref(currentDate.getMonth() + 1);
 const selectedYear = ref(currentDate.getFullYear());
+const selectedCompanyCode = ref<string | null>(null);
+
+const companyFilterOptions = computed(() => {
+  const all = [{ label: isMobile.value ? 'Semua' : 'Semua Entity', value: null }];
+  return all.concat(
+    companies.value.map((c) => ({
+      label: isMobile.value ? c.code : c.name,
+      value: c.code,
+    }))
+  );
+});
 
 const months = [
   { label: 'Januari', value: 1 },
@@ -48,6 +59,7 @@ function handleResize() {
 
 // Fetch data on mount and when filter changes
 onMounted(() => {
+  revenueStore.fetchCompanies();
   fetchData();
   window.addEventListener('resize', handleResize);
 });
@@ -168,7 +180,11 @@ const comparisonChartData = computed<ChartData<'bar'> | null>(() => {
     JAPELIN: { target: 'rgba(249, 115, 22, 0.5)', realisasi: 'rgba(249, 115, 22, 1)' },
   };
 
-  yearlyComparison.value.datasets.forEach((ds) => {
+  const filteredDatasets = selectedCompanyCode.value
+    ? yearlyComparison.value.datasets.filter((ds) => ds.company === selectedCompanyCode.value)
+    : yearlyComparison.value.datasets;
+
+  filteredDatasets.forEach((ds) => {
     const color = colors[ds.company as keyof typeof colors] || { target: 'rgba(156, 163, 175, 0.5)', realisasi: 'rgba(156, 163, 175, 1)' };
     datasets.push({
       label: `${ds.company} Target`,
@@ -331,7 +347,17 @@ const comparisonChartOptions = computed<ChartOptions<'bar'>>(() => ({
 
       <Card class="mt-3">
         <template #title>
-          <span class="card-title">Perbandingan Target vs Realisasi ({{ selectedYear }})</span>
+          <div class="chart-header">
+            <span class="card-title">Perbandingan Target vs Realisasi ({{ selectedYear }})</span>
+            <Select
+              v-model="selectedCompanyCode"
+              :options="companyFilterOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Filter Entity"
+              class="company-filter"
+            />
+          </div>
         </template>
         <template #content>
           <div v-if="comparisonChartData">
@@ -426,6 +452,18 @@ const comparisonChartOptions = computed<ChartOptions<'bar'>>(() => ({
 /* Charts Section */
 .charts-section {
   margin-top: 1rem;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.company-filter {
+  min-width: 150px;
 }
 
 .chart-wrapper {

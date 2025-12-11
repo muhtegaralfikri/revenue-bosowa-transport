@@ -5,6 +5,7 @@ import HomeView from '../views/HomeView.vue';
 import LoginView from '../views/LoginView.vue';
 import UserManagementView from '../views/UserManagementView.vue';
 import InputRevenueView from '../views/InputRevenueView.vue';
+import HistoryView from '../views/HistoryView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -23,6 +24,12 @@ const router = createRouter({
       path: '/input',
       name: 'input',
       component: InputRevenueView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/history',
+      name: 'history',
+      component: HistoryView,
       meta: { requiresAuth: true },
     },
     {

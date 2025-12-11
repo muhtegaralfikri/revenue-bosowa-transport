@@ -29,7 +29,7 @@
 
 Backend ini sekarang menggunakan MySQL secara default (contoh: XAMPP).
 
-1. Jalankan layanan MySQL dari XAMPP dan buat database kosong, mis. `fuel_ledger`.
+1. Jalankan layanan MySQL dari XAMPP dan buat database kosong, mis. `revenue`.
 2. Pastikan driver sudah terpasang (`npm install mysql2` di folder `backend/`).
 3. Isi variabel di `.env`:
    ```
@@ -38,7 +38,7 @@ Backend ini sekarang menggunakan MySQL secara default (contoh: XAMPP).
    DB_PORT=3306
    DB_USERNAME=root
    DB_PASSWORD=your_xampp_password   # kosong jika belum di-set
-   DB_NAME=fuel_ledger
+   DB_NAME=revenue
    ```
 4. Jalankan `npm run start:dev`; TypeORM (synchronize:true) akan membuat tabel secara otomatis di database tersebut.
 
