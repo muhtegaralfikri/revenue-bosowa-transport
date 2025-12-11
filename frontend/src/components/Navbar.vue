@@ -22,10 +22,6 @@ const menuItems = computed(() => {
       command: () => router.push('/input'),
     });
     items.push({
-      label: 'Riwayat',
-      command: () => router.push('/history'),
-    });
-    items.push({
       label: 'Kelola User',
       command: () => router.push('/users'),
     });

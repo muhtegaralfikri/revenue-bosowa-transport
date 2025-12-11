@@ -175,38 +175,66 @@ const trendChartOptions = computed<ChartOptions<'line'>>(() => ({
 const comparisonChartData = computed<ChartData<'bar'> | null>(() => {
   if (!yearlyComparison.value?.datasets) return null;
   
-  const datasets: any[] = [];
-  const colors = {
-    BBI: { target: 'rgba(59, 130, 246, 0.5)', realisasi: 'rgba(59, 130, 246, 1)' },
-    BBA: { target: 'rgba(34, 197, 94, 0.5)', realisasi: 'rgba(34, 197, 94, 1)' },
-    JAPELIN: { target: 'rgba(249, 115, 22, 0.5)', realisasi: 'rgba(249, 115, 22, 1)' },
-  };
-
-  const filteredDatasets = selectedCompanyCode.value
-    ? yearlyComparison.value.datasets.filter((ds) => ds.company === selectedCompanyCode.value)
-    : yearlyComparison.value.datasets;
-
-  filteredDatasets.forEach((ds) => {
-    const color = colors[ds.company as keyof typeof colors] || { target: 'rgba(156, 163, 175, 0.5)', realisasi: 'rgba(156, 163, 175, 1)' };
-    datasets.push({
-      label: `${ds.company} Target`,
-      data: ds.target,
-      backgroundColor: color.target,
-      borderColor: color.realisasi,
-      borderWidth: 1,
+  const allDatasets = yearlyComparison.value.datasets;
+  const monthCount = yearlyComparison.value.labels.length;
+  
+  // Jika pilih perusahaan tertentu
+  if (selectedCompanyCode.value) {
+    const selected = allDatasets.find((ds) => ds.company === selectedCompanyCode.value);
+    if (!selected) return null;
+    
+    return {
+      labels: yearlyComparison.value.labels,
+      datasets: [
+        {
+          label: 'Target',
+          data: selected.target,
+          backgroundColor: 'rgba(59, 130, 246, 0.5)',
+          borderColor: 'rgba(59, 130, 246, 1)',
+          borderWidth: 1,
+        },
+        {
+          label: 'Realisasi',
+          data: selected.realisasi,
+          backgroundColor: 'rgba(34, 197, 94, 1)',
+          borderColor: 'rgba(34, 197, 94, 1)',
+          borderWidth: 1,
+        },
+      ],
+    };
+  }
+  
+  // Gabungkan semua target dan realisasi dari ketiga perusahaan
+  const combinedTarget = Array(monthCount).fill(0);
+  const combinedRealisasi = Array(monthCount).fill(0);
+  
+  allDatasets.forEach((ds) => {
+    ds.target.forEach((val, idx) => {
+      combinedTarget[idx] += val;
     });
-    datasets.push({
-      label: `${ds.company} Realisasi`,
-      data: ds.realisasi,
-      backgroundColor: color.realisasi,
-      borderColor: color.realisasi,
-      borderWidth: 1,
+    ds.realisasi.forEach((val, idx) => {
+      combinedRealisasi[idx] += val;
     });
   });
 
   return {
     labels: yearlyComparison.value.labels,
-    datasets,
+    datasets: [
+      {
+        label: 'Target',
+        data: combinedTarget,
+        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+        borderColor: 'rgba(59, 130, 246, 1)',
+        borderWidth: 1,
+      },
+      {
+        label: 'Realisasi',
+        data: combinedRealisasi,
+        backgroundColor: 'rgba(34, 197, 94, 1)',
+        borderColor: 'rgba(34, 197, 94, 1)',
+        borderWidth: 1,
+      },
+    ],
   };
 });
 

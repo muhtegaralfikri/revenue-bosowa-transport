@@ -27,7 +27,7 @@ export class RevenueService {
   async seedCompanies() {
     const companies = [
       { name: 'Bosowa Bandar Indonesia', code: 'BBI' },
-      { name: 'Bosowa Bandar Agency', code: 'BBA' },
+      { name: 'Bosowa Bandar Agensi', code: 'BBA' },
       { name: 'Jasa Pelabuhan Indonesia', code: 'JAPELIN' },
     ];
 
