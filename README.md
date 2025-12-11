@@ -1,207 +1,310 @@
-# Fuel Ledger System
+# Revenue Monitoring System - Bosowa Transport
 
-Sistem buku besar stok BBM untuk tim Bosowa Fuel. Backend (NestJS + TypeORM) menyediakan API terautentikasi dengan JWT/refresh token; frontend (Vue 3 + PrimeVue) menampilkan dashboard real-time dan form transaksi. Alur dipisah untuk admin (stok masuk) dan operasional (pemakaian) dengan kontrol akses role-based.
+Sistem monitoring pendapatan untuk grup perusahaan Bosowa Transport. Backend (NestJS + TypeORM) menyediakan API terautentikasi dengan JWT/refresh token; frontend (Vue 3 + PrimeVue) menampilkan dashboard real-time, input realisasi, dan perbandingan target vs realisasi.
 
-## Ringkasan fitur
-- **Ledger stok**: kartu stok harian, tren IN/OUT, riwayat transaksi, ekspor Excel.
-- **Role & security**: JWT access + refresh, guard role (`admin`, `operasional`), endpoint `auth/me`, logout, revoke token.
-- **Manajemen user**: CRUD user, reset password, dan seeding akun default.
-- **Migrasi DB**: skema disimpan di TypeORM migrations (tidak bergantung `synchronize`).
-- **UI**: dashboard Vue 3 + PrimeVue, Pinia store, polling ringkasan hanya saat user terautentikasi.
+## Ringkasan Fitur
+- **Dashboard Revenue**: ringkasan harian & bulanan, tren realisasi, perbandingan tahunan.
+- **Input Realisasi**: form input pendapatan harian per perusahaan.
+- **Target Management**: set target bulanan per perusahaan.
+- **Multi-Company**: mendukung beberapa perusahaan (BBI, BBA, JAPELIN).
+- **Auth & Security**: JWT access + refresh token, manajemen user.
+- **Export**: ekspor data ke Excel.
 
-## Arsitektur & teknologi
-- **Frontend** (`frontend/`)
-  - Framework: Vue 3 (Vite).
-  - UI: PrimeVue + PrimeIcons.
-  - Routing: Vue Router (history mode) dengan guard auth; rute dipisah per role (admin vs operasional) untuk dashboard, stok in/out, dan manajemen user.
-  - State: Pinia; auth token disimpan di `localStorage` dengan refresh otomatis.
-  - HTTP: Axios dengan interceptor token.
-  - Utilitas: dayjs untuk tanggal, SheetJS/xlsx untuk ekspor Excel.
-- **Backend** (`backend/`)
-  - Framework: NestJS (REST + Swagger opsional).
-  - ORM: TypeORM (PostgreSQL dan MySQL kompatibel) dengan migrations.
-  - Auth: JWT access/refresh, guard role, endpoint `auth/me`, logout/revoke token.
-  - Validasi: class-validator + class-transformer pada DTO.
-  - Logging/env: @nestjs/config, pino logger (jika diaktifkan).
-- **Infra & Dev**
-  - Node.js 18+, npm.
-  - PM2 untuk daemon di produksi; Nginx reverse proxy/serving static frontend.
-  - Testing backend dengan Jest (`npm run test`).
+## Perusahaan Default
+| ID | Nama | Kode |
+|----|------|------|
+| 1 | Bosowa Bandar Indonesia | BBI |
+| 2 | Bosowa Bandar Agensi | BBA |
+| 3 | Jasa Pelabuhan Indonesia | JAPELIN |
 
-## Struktur direktori
+## Teknologi
+- **Frontend**: Vue 3, Vite, PrimeVue, Pinia, Axios, Chart.js
+- **Backend**: NestJS, TypeORM, MySQL/MariaDB, JWT
+- **Infra**: Node.js 18+, PM2, Nginx
+
+## Struktur Direktori
 ```
 backend/   # API NestJS + TypeORM
 frontend/  # Client Vue 3 + Vite
 ```
 
-## Persiapan environment
-1. Salin file contoh `.env`:
-   ```bash
-   cp backend/.env.example backend/.env
-   cp frontend/.env.example frontend/.env
-   ```
-2. Edit `backend/.env` sesuai DB Anda (Postgres via `DATABASE_URL` atau host/port; MySQL juga didukung). Set `JWT_SECRET`, `JWT_ACCESS_TTL_SECONDS`, `JWT_REFRESH_TTL_SECONDS`, dan `SEED_DEFAULT_USERS` bila ingin seeding akun default.
-3. Edit `frontend/.env` dan set `VITE_API_URL` (mis. `http://localhost:3000/api`).
+## Quick Start (Development)
 
-## Cara jalanin backend
+### 1. Database (Podman/Docker)
+```bash
+# MariaDB
+podman run -d --name mariadb-revenue \
+  -e MYSQL_ROOT_PASSWORD=rootpassword \
+  -e MYSQL_DATABASE=revenue \
+  -e MYSQL_USER=revenue_user \
+  -e MYSQL_PASSWORD=yourpassword \
+  -p 3307:3306 \
+  mariadb:latest
+```
+
+### 2. Backend
 ```bash
 cd backend
+cp .env.example .env
+# Edit .env sesuai konfigurasi database
 npm install
 npm run db:migration:run
 npm run start:dev
 ```
 
-### Migrasi schema
-- Generate: `npm run db:migration:generate --name=AddNewTable`
-- Jalankan: `npm run db:migration:run`
-- Revert: `npm run db:migration:revert`
-
-> Catatan: `npm install` bisa gagal di host tanpa WSL2; gunakan environment Node.js biasa bila perlu update `node_modules`.
-
-## Cara jalanin frontend
+### 3. Frontend
 ```bash
 cd frontend
+cp .env.example .env
+# Edit VITE_API_URL=http://localhost:3000/api
 npm install
 npm run dev
 ```
-Klien membutuhkan access token untuk memanggil `/stock/...`. Setelah login, token disimpan di localStorage dan otomatis direfresh sebelum kedaluwarsa.
 
-## Routing (Vue Router)
-- Mode history dengan base default Vite.
-- Guard auth pada router global: memblokir rute bertanda `requiresAuth` bila belum ada access token; jika token ada tetapi role tidak cocok, diarahkan ke halaman sesuai rolenya.
-- Rute publik: `/login` (guest only, redirect ke dashboard jika sudah login).
-- Rute admin: dashboard admin, stok masuk, manajemen user, riwayat dan tren. Biasanya prefiks `/admin`.
-- Rute operasional: dashboard operasional, pemakaian stok/keluar, riwayat. Biasanya prefiks `/op`.
-- Not-found fallback (`/:pathMatch(.*)*`) mengarahkan ke halaman 404.
+### 4. Seed Data
+```bash
+# Seed companies (via API)
+curl -X POST http://localhost:3000/api/revenue/companies/seed
+```
 
-## Cara kerja aplikasi (alur end-to-end)
-- **Autentikasi**: User login di frontend (`/login`) → backend `POST /auth/login` mengembalikan access + refresh token. Token disimpan di `localStorage`. Axios interceptor menambahkan `Authorization: Bearer <accessToken>` untuk tiap request dan otomatis memanggil `/auth/refresh` jika access token kedaluwarsa.
-- **Otorisasi & role guard**: Vue Router guard memeriksa token + role; NestJS guard memeriksa JWT + role metadata pada controller. Admin punya akses penuh (stok masuk, user, laporan), operasional hanya pemakaian/keluar stok dan dashboardnya.
-- **Dashboard & polling**: Setelah login, frontend memuat ringkasan stok, tren, dan riwayat lewat endpoint `/stock/summary`, `/stock/trend`, dan `/stock/history`. Polling ringkasan diaktifkan hanya jika user terautentikasi agar beban API terkendali.
-- **Transaksi stok**: 
-  - Admin mencatat stok masuk (IN) via form → `POST /stock/in` menyimpan transaksi melalui service TypeORM dan memperbarui ledger.
-  - Operasional mencatat pemakaian (OUT) via `POST /stock/out`. Semua transaksi terekam untuk histori dan perhitungan saldo.
-- **Ledger & perhitungan**: Backend menghitung saldo berdasarkan transaksi IN/OUT tersimpan di database. Query summary/trend menggunakan TypeORM repo untuk agregasi harian/bulanan dan menyediakan data untuk chart di frontend.
-- **Ekspor**: Frontend memakai SheetJS/xlsx untuk ekspor data transaksi/summary ke Excel dari data yang sudah diambil via API.
-- **Swagger & observability**: Dokumentasi API opsional di `/api/docs` dengan `ENABLE_SWAGGER=true`. PM2 menangani proses backend; log dapat diakses via PM2/Nginx.
+### Default Login
+- **Email**: `admin@example.com`
+- **Password**: `password123`
+
+## Konfigurasi Environment
+
+### Backend (`backend/.env`)
+```env
+APP_PORT=3000
+APP_TIMEZONE=Asia/Makassar
+ENABLE_SWAGGER=true
+ENABLE_CORS=true
+CORS_ORIGINS=http://localhost:5173
+
+DB_TYPE=mariadb
+DB_HOST=127.0.0.1
+DB_PORT=3307
+DB_USERNAME=revenue_user
+DB_PASSWORD=yourpassword
+DB_NAME=revenue
+DB_SSL=false
+DB_SYNCHRONIZE=false
+DB_LOGGING=false
+
+JWT_SECRET=your-super-secret-key
+JWT_ACCESS_TTL_SECONDS=86400
+JWT_REFRESH_TTL_SECONDS=604800
+
+SEED_DEFAULT_USERS=true
+DB_TIMEZONE="+08:00"
+```
+
+### Frontend (`frontend/.env`)
+```env
+VITE_API_URL=http://localhost:3000/api
+```
 
 ## Deployment (aaPanel Ubuntu VPS)
-Ringkasan alur deploy backend + frontend pada VPS Ubuntu via aaPanel:
 
-1. **Persiapan VPS**
-   - Install Node.js 18+ dan npm (`aaPanel App Store` > Node.js Manager atau nvm).
-   - Tambahkan PM2 dari App Store untuk menjalankan servis Node sebagai daemon.
-   - Install Nginx (atau gunakan Reverse Proxy di panel) untuk API/frontend.
+### 1. Install Software via aaPanel App Store
+- **Node.js** v18+ (Node.js Manager)
+- **PM2** (Process Manager)
+- **MariaDB** atau **MySQL**
+- **Nginx**
 
-2. **Clone & konfigurasi**
-   - Clone/upload repo ke `/www/wwwroot/fuel-ledger-system`.
-   - Salin env contoh:
-     ```bash
-     cp backend/.env.example backend/.env
-     cp frontend/.env.example frontend/.env
-     ```
-   - Sesuaikan `backend/.env` (DATABASE_URL/DB_HOST, JWT_SECRET, dll) dan `frontend/.env` (`VITE_API_URL` mengarah ke domain API, mis. `https://api.domainanda.com/api`).
+### 2. Buat Database
+Di aaPanel > Database > Add Database:
+- **Name**: `revenue`
+- **Username**: `revenue_user`
+- **Password**: (generate password kuat)
+- **Access**: Local only
 
-3. **Backend**
-   ```bash
-   cd backend
-   npm install
-   npm run build
-   npm run db:migration:run
-   pm2 start dist/main.js --name fuel-ledger-api
-   pm2 save
-   ```
-   Arahkan Nginx reverse proxy dari `https://api.domainanda.com` ke `localhost:3000`.
+### 3. Clone Repository
+```bash
+cd /www/wwwroot
+git clone https://github.com/[username]/revenue-bosowa-transport.git
+cd revenue-bosowa-transport
+```
 
-4. **Frontend**
-   ```bash
-   cd ../frontend
-   npm install
-   npm run build
-   ```
-   Serve `frontend/dist` via Nginx sebagai static site. Pastikan `VITE_API_URL` menunjuk ke domain API produksi.
-
-5. **SSL & keamanan**
-   - Gunakan Let's Encrypt via aaPanel untuk domain API & frontend.
-   - Firewall hanya buka port 80/443; database sebaiknya hanya akses internal.
-
-6. **Monitoring & update**
-   - PM2 restart otomatis jika crash. Untuk update: `git pull`, `npm install`, `npm run build`, lalu `pm2 restart fuel-ledger-api`.
-
-## Testing
-Backend:
+### 4. Setup Backend
 ```bash
 cd backend
-npm run test
+cp .env.example .env
+nano .env
 ```
-Menjalankan unit test (`auth.service`, `RolesGuard`). Tambahkan test untuk logika stok/endpoint lainnya sebelum produksi.
 
-## API ringkas
-- `POST /auth/login` – login, balikan `{ accessToken, refreshToken, user }`.
-- `POST /auth/refresh` – tukar refresh token dengan pasangan token baru.
-- `POST /auth/logout` – revoke semua refresh token user (perlu Authorization).
-- `GET /auth/me` – profil user aktif.
-- `CRUD /users` – hanya admin (JWT + role guard).
-- `/stock/*` – wajib JWT (summary, tren, history, in/out).
+Edit `.env` untuk production:
+```env
+APP_PORT=3000
+APP_TIMEZONE=Asia/Makassar
+ENABLE_SWAGGER=false
+ENABLE_CORS=true
+CORS_ORIGINS=https://revenue.domain.com
 
-Swagger tersedia di `/api/docs` jika `ENABLE_SWAGGER=true`.
+DB_TYPE=mariadb
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USERNAME=revenue_user
+DB_PASSWORD=[password_dari_aapanel]
+DB_NAME=revenue
+DB_SSL=false
+DB_SYNCHRONIZE=false
+DB_LOGGING=false
 
-### Endpoint utama (role)
-| Endpoint | Method | Deskripsi | Role |
-| --- | --- | --- | --- |
-| `/auth/login` | POST | Login, balikan access + refresh token | Publik |
-| `/auth/refresh` | POST | Tukar refresh token untuk pasangan baru | Auth |
-| `/auth/logout` | POST | Revoke semua refresh token user | Auth |
-| `/auth/me` | GET | Profil user aktif | Auth |
-| `/users` | CRUD | Kelola user (create/update/delete/list) | Admin |
-| `/stock/summary` | GET | Ringkasan stok (saldo, total IN/OUT) | Admin, Operasional |
-| `/stock/trend` | GET | Tren stok/IN/OUT per periode | Admin, Operasional |
-| `/stock/history` | GET | Riwayat transaksi stok | Admin, Operasional |
-| `/stock/in` | POST | Catat stok masuk | Admin |
-| `/stock/out` | POST | Catat pemakaian/keluar | Operasional |
-| `/stock/export` | GET | Ekspor data ke Excel (jika diaktifkan) | Admin, Operasional |
+JWT_SECRET=[generate_random_string_64_char]
+JWT_ACCESS_TTL_SECONDS=86400
+JWT_REFRESH_TTL_SECONDS=604800
 
-## Konfigurasi environment
-- **Backend (`backend/.env`)**
-  - `DATABASE_URL` atau `DB_HOST`/`DB_PORT`/`DB_USERNAME`/`DB_PASSWORD`/`DB_NAME`: koneksi Postgres/MySQL.
-  - `JWT_SECRET`: secret signing JWT.
-  - `JWT_ACCESS_TTL_SECONDS`: umur access token (detik).
-  - `JWT_REFRESH_TTL_SECONDS`: umur refresh token (detik).
-  - `SEED_DEFAULT_USERS`: `true`/`false` untuk seeding akun default (admin & operasional).
-  - `ENABLE_SWAGGER`: `true` untuk membuka `/api/docs`.
-  - `PORT`: port server (default 3000).
-  - Opsional: `LOG_LEVEL`, `NODE_ENV`, konfigurasi CORS jika disiapkan.
-- **Frontend (`frontend/.env`)**
-  - `VITE_API_URL`: base URL API, contoh `http://localhost:3000/api` atau `https://api.domainanda.com/api`.
-  - Opsional: `VITE_APP_NAME` atau branding lain jika tersedia.
+SEED_DEFAULT_USERS=true
+DB_TIMEZONE="+08:00"
+```
 
-## Diagram arsitektur
-```mermaid
-flowchart LR
-    subgraph Client
-        U[User Browser]
-        FE[Vue 3 + Vite<br/>PrimeVue UI<br/>Pinia + Axios]
-    end
+Install & Build:
+```bash
+npm install
+npm run build
+npm run db:migration:run
+```
 
-    subgraph Server
-        API[NestJS REST API<br/>Auth + Stock Modules]
-        AUTH[JWT/Refresh Service<br/>Role Guard]
-        STOCK[Stock Service<br/>TypeORM Repos]
-    end
+Start dengan PM2:
+```bash
+pm2 start dist/main.js --name revenue-api
+pm2 save
+pm2 startup
+```
 
-    DB[(PostgreSQL/MySQL)]
-    Redis[(Optional: cache/token blacklist)]
+Seed companies:
+```bash
+curl -X POST http://localhost:3000/api/revenue/companies/seed
+```
 
-    U --> FE
-    FE -->|HTTPS JSON| API
-    API --> AUTH
-    API --> STOCK
-    STOCK --> DB
-    AUTH --> DB
-    AUTH -->|issue/refresh| FE
-    API -->|logs/metrics| PM2[(PM2/Nginx)]
-    PM2 -->|serve static| FE
-    API -. optional .-> Redis
-    Nginx[(Nginx Reverse Proxy)] --> API
-    FE --> Nginx
-```***
+### 5. Setup Frontend
+```bash
+cd ../frontend
+cp .env.example .env
+nano .env
+```
+
+Edit `.env`:
+```env
+VITE_API_URL=https://api.revenue.domain.com/api
+```
+
+Build:
+```bash
+npm install
+npm run build
+```
+
+### 6. Setup Website di aaPanel
+
+#### Website Frontend (Static)
+1. aaPanel > Website > Add Site
+2. **Domain**: `revenue.domain.com`
+3. **Root Directory**: `/www/wwwroot/revenue-bosowa-transport/frontend/dist`
+4. **PHP**: Pure Static
+
+Tambah konfigurasi Nginx untuk SPA (Site > Config):
+```nginx
+location / {
+    try_files $uri $uri/ /index.html;
+}
+```
+
+#### Website API (Reverse Proxy)
+1. aaPanel > Website > Add Site
+2. **Domain**: `api.revenue.domain.com`
+3. **PHP**: Pure Static
+4. Site > Reverse Proxy > Add:
+   - **Target URL**: `http://127.0.0.1:3000`
+   - **Send Domain**: `$host`
+
+### 7. SSL Certificate
+1. Site > SSL > Let's Encrypt
+2. Aktifkan untuk kedua domain
+3. Force HTTPS: Enable
+
+### 8. Firewall
+- Buka port: 80, 443
+- Database: local access only (jangan expose)
+
+## Update Production
+
+```bash
+cd /www/wwwroot/revenue-bosowa-transport
+
+# Pull latest
+git pull origin main
+
+# Update backend
+cd backend
+npm install
+npm run build
+npm run db:migration:run
+pm2 restart revenue-api
+
+# Update frontend
+cd ../frontend
+npm install
+npm run build
+```
+
+## API Endpoints
+
+| Endpoint | Method | Deskripsi |
+|----------|--------|-----------|
+| `/api/auth/login` | POST | Login user |
+| `/api/auth/refresh` | POST | Refresh token |
+| `/api/auth/logout` | POST | Logout user |
+| `/api/auth/me` | GET | Get current user |
+| `/api/users` | GET/POST | List/Create users |
+| `/api/users/:id` | GET/PATCH/DELETE | Get/Update/Delete user |
+| `/api/revenue/companies` | GET | List companies |
+| `/api/revenue/companies/seed` | POST | Seed default companies |
+| `/api/revenue/targets` | GET/POST | List/Create targets |
+| `/api/revenue/realizations` | GET/POST | List/Create realizations |
+| `/api/revenue/summary` | GET | Dashboard summary |
+| `/api/revenue/trend` | GET | Monthly trend data |
+| `/api/revenue/yearly-comparison` | GET | Yearly comparison |
+
+## Database Migrations
+
+```bash
+# Generate migration baru
+npm run db:migration:generate --name=NamaMigration
+
+# Jalankan migration
+npm run db:migration:run
+
+# Revert migration terakhir
+npm run db:migration:revert
+```
+
+## Troubleshooting
+
+### Error: Unknown column
+Jalankan migration:
+```bash
+npm run db:migration:run
+```
+
+### Error: CORS
+Pastikan `CORS_ORIGINS` di backend `.env` sesuai dengan domain frontend.
+
+### PM2 tidak start
+```bash
+pm2 logs revenue-api  # Cek error
+pm2 delete revenue-api
+pm2 start dist/main.js --name revenue-api
+```
+
+### Frontend 404 on refresh
+Tambahkan config Nginx:
+```nginx
+location / {
+    try_files $uri $uri/ /index.html;
+}
+```
+
+## License
+MIT
