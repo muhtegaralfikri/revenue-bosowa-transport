@@ -126,60 +126,67 @@ export class RevenueService {
     });
   }
 
-  // === Summary ===
+  // === Summary === (Optimized: 4 queries instead of N+1)
   async getSummary(query: RevenueQueryDto) {
     const year = query.year || new Date().getFullYear();
     const month = query.month || new Date().getMonth() + 1;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+    const daysInMonth = endDate.getDate();
 
+    // Query 1: Get all companies
     const companies = await this.companyRepo.find({ where: { isActive: true } });
 
-    const result = await Promise.all(
-      companies.map(async (company) => {
-        // Get target for this month
-        const target = await this.targetRepo.findOne({
-          where: { companyId: company.id, year, month },
-        });
-        const targetAmount = target ? Number(target.targetAmount) : 0;
-        const dailyTarget = targetAmount / new Date(year, month, 0).getDate();
+    // Query 2: Get all targets for this month (batch)
+    const targets = await this.targetRepo.find({
+      where: { year, month },
+    });
+    const targetMap = new Map(targets.map(t => [t.companyId, Number(t.targetAmount)]));
 
-        // Get today's realization
-        const todayRealization = await this.realizationRepo.findOne({
-          where: { companyId: company.id, date: today },
-        });
-        const todayAmount = todayRealization ? Number(todayRealization.amount) : 0;
+    // Query 3: Get today's realizations (batch)
+    const todayRealizations = await this.realizationRepo.find({
+      where: { date: today },
+    });
+    const todayMap = new Map(todayRealizations.map(r => [r.companyId, Number(r.amount)]));
 
-        // Get month's total realization
-        const startDate = new Date(year, month - 1, 1);
-        const endDate = new Date(year, month, 0);
-        const monthRealizations = await this.realizationRepo.find({
-          where: { companyId: company.id, date: Between(startDate, endDate) },
-        });
-        const monthTotal = monthRealizations.reduce((sum, r) => sum + Number(r.amount), 0);
+    // Query 4: Get month totals using SQL aggregation
+    const monthTotals = await this.realizationRepo
+      .createQueryBuilder('r')
+      .select('r.company_id', 'companyId')
+      .addSelect('SUM(r.amount)', 'total')
+      .where('r.date >= :startDate', { startDate })
+      .andWhere('r.date <= :endDate', { endDate })
+      .groupBy('r.company_id')
+      .getRawMany();
+    const monthMap = new Map(monthTotals.map(m => [m.companyId, Number(m.total)]));
 
-        const percentage = dailyTarget > 0 ? (todayAmount / dailyTarget) * 100 : 0;
-        const monthPercentage = targetAmount > 0 ? (monthTotal / targetAmount) * 100 : 0;
+    // Build result without additional queries
+    const result = companies.map((company) => {
+      const targetAmount = targetMap.get(company.id) || 0;
+      const dailyTarget = targetAmount / daysInMonth;
+      const todayAmount = todayMap.get(company.id) || 0;
+      const monthTotal = monthMap.get(company.id) || 0;
 
-        return {
-          company: {
-            id: company.id,
-            name: company.name,
-            code: company.code,
-          },
-          today: {
-            realisasi: todayAmount,
-            target: dailyTarget,
-            percentage: Math.round(percentage * 10) / 10,
-          },
-          month: {
-            realisasi: monthTotal,
-            target: targetAmount,
-            percentage: Math.round(monthPercentage * 10) / 10,
-          },
-        };
-      }),
-    );
+      const percentage = dailyTarget > 0 ? (todayAmount / dailyTarget) * 100 : 0;
+      const monthPercentage = targetAmount > 0 ? (monthTotal / targetAmount) * 100 : 0;
+
+      return {
+        company: { id: company.id, name: company.name, code: company.code },
+        today: {
+          realisasi: todayAmount,
+          target: dailyTarget,
+          percentage: Math.round(percentage * 10) / 10,
+        },
+        month: {
+          realisasi: monthTotal,
+          target: targetAmount,
+          percentage: Math.round(monthPercentage * 10) / 10,
+        },
+      };
+    });
 
     return {
       year,
@@ -189,39 +196,51 @@ export class RevenueService {
     };
   }
 
-  // === Trend ===
+  // === Trend === (Optimized: 2 queries instead of N+1)
   async getTrend(query: RevenueQueryDto) {
     const year = query.year || new Date().getFullYear();
     const month = query.month || new Date().getMonth() + 1;
 
     const daysInMonth = new Date(year, month, 0).getDate();
-    const companies = await this.companyRepo.find({ where: { isActive: true } });
-
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
 
     const labels = Array.from({ length: daysInMonth }, (_, i) => String(i + 1));
 
-    const datasets = await Promise.all(
-      companies.map(async (company) => {
-        const realizations = await this.realizationRepo.find({
-          where: { companyId: company.id, date: Between(startDate, endDate) },
-          order: { date: 'ASC' },
-        });
+    // Query 1: Get all companies
+    const companies = await this.companyRepo.find({ where: { isActive: true } });
 
-        const data = Array(daysInMonth).fill(0);
-        realizations.forEach((r) => {
-          const day = new Date(r.date).getDate() - 1;
-          data[day] = Number(r.amount) / 1000000; // Convert to millions
-        });
+    // Query 2: Get all realizations for the month (batch)
+    const allRealizations = await this.realizationRepo.find({
+      where: { date: Between(startDate, endDate) },
+      order: { date: 'ASC' },
+    });
 
-        return {
-          company: company.code,
-          companyName: company.name,
-          data,
-        };
-      }),
-    );
+    // Group realizations by company
+    const realizationsByCompany = new Map<number, typeof allRealizations>();
+    allRealizations.forEach((r) => {
+      if (!realizationsByCompany.has(r.companyId)) {
+        realizationsByCompany.set(r.companyId, []);
+      }
+      realizationsByCompany.get(r.companyId)!.push(r);
+    });
+
+    // Build datasets without additional queries
+    const datasets = companies.map((company) => {
+      const realizations = realizationsByCompany.get(company.id) || [];
+      const data = Array(daysInMonth).fill(0);
+      
+      realizations.forEach((r) => {
+        const day = new Date(r.date).getDate() - 1;
+        data[day] = Number(r.amount) / 1000000;
+      });
+
+      return {
+        company: company.code,
+        companyName: company.name,
+        data,
+      };
+    });
 
     return {
       year,
@@ -231,44 +250,72 @@ export class RevenueService {
     };
   }
 
-  // === Yearly Comparison ===
+  // === Yearly Comparison === (Optimized: 3 queries instead of 73!)
   async getYearlyComparison(year?: number) {
     const targetYear = year || new Date().getFullYear();
-    const companies = await this.companyRepo.find({ where: { isActive: true } });
-
-    const months = Array.from({ length: 12 }, (_, i) => i + 1);
     const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
 
-    const datasets = await Promise.all(
-      companies.map(async (company) => {
-        const targetData: number[] = [];
-        const realisasiData: number[] = [];
+    // Query 1: Get all companies
+    const companies = await this.companyRepo.find({ where: { isActive: true } });
 
-        for (const month of months) {
-          // Get target
-          const target = await this.targetRepo.findOne({
-            where: { companyId: company.id, year: targetYear, month },
-          });
-          targetData.push(target ? Number(target.targetAmount) / 1000000 : 0);
+    // Query 2: Get all targets for the year (batch)
+    const allTargets = await this.targetRepo.find({
+      where: { year: targetYear },
+    });
+    
+    // Create lookup map: companyId -> month -> amount
+    const targetMap = new Map<number, Map<number, number>>();
+    allTargets.forEach((t) => {
+      if (!targetMap.has(t.companyId)) {
+        targetMap.set(t.companyId, new Map());
+      }
+      targetMap.get(t.companyId)!.set(t.month, Number(t.targetAmount));
+    });
 
-          // Get realization sum for the month
-          const startDate = new Date(targetYear, month - 1, 1);
-          const endDate = new Date(targetYear, month, 0);
-          const realizations = await this.realizationRepo.find({
-            where: { companyId: company.id, date: Between(startDate, endDate) },
-          });
-          const monthTotal = realizations.reduce((sum, r) => sum + Number(r.amount), 0);
-          realisasiData.push(monthTotal / 1000000);
-        }
+    // Query 3: Get monthly totals using SQL aggregation
+    const startOfYear = new Date(targetYear, 0, 1);
+    const endOfYear = new Date(targetYear, 11, 31);
+    
+    const monthlyTotals = await this.realizationRepo
+      .createQueryBuilder('r')
+      .select('r.company_id', 'companyId')
+      .addSelect('MONTH(r.date)', 'month')
+      .addSelect('SUM(r.amount)', 'total')
+      .where('r.date >= :startOfYear', { startOfYear })
+      .andWhere('r.date <= :endOfYear', { endOfYear })
+      .groupBy('r.company_id')
+      .addGroupBy('MONTH(r.date)')
+      .getRawMany();
 
-        return {
-          company: company.code,
-          companyName: company.name,
-          target: targetData,
-          realisasi: realisasiData,
-        };
-      }),
-    );
+    // Create lookup map: companyId -> month -> total
+    const realisasiMap = new Map<number, Map<number, number>>();
+    monthlyTotals.forEach((m) => {
+      if (!realisasiMap.has(m.companyId)) {
+        realisasiMap.set(m.companyId, new Map());
+      }
+      realisasiMap.get(m.companyId)!.set(Number(m.month), Number(m.total));
+    });
+
+    // Build datasets without additional queries
+    const datasets = companies.map((company) => {
+      const companyTargets = targetMap.get(company.id) || new Map();
+      const companyRealisasi = realisasiMap.get(company.id) || new Map();
+
+      const targetData: number[] = [];
+      const realisasiData: number[] = [];
+
+      for (let month = 1; month <= 12; month++) {
+        targetData.push((companyTargets.get(month) || 0) / 1000000);
+        realisasiData.push((companyRealisasi.get(month) || 0) / 1000000);
+      }
+
+      return {
+        company: company.code,
+        companyName: company.name,
+        target: targetData,
+        realisasi: realisasiData,
+      };
+    });
 
     return {
       year: targetYear,

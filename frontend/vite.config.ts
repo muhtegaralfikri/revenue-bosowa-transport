@@ -18,8 +18,20 @@ export default defineConfig({
     },
   },
 
-  // Jangan hapus isi folder outDir (dist) agar file khusus hosting seperti .user.ini tidak dihapus
   build: {
     emptyOutDir: false,
+    // Code splitting untuk optimasi bundle
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor chunks - library eksternal
+          'vendor-vue': ['vue', 'vue-router', 'pinia'],
+          'vendor-primevue': ['primevue', '@primeuix/themes'],
+          'vendor-chart': ['chart.js'],
+        },
+      },
+    },
+    // Naikkan limit warning agar tidak terlalu banyak warning
+    chunkSizeWarningLimit: 600,
   },
 })

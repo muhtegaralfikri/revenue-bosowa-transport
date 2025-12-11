@@ -5,11 +5,14 @@ import {
   ManyToOne,
   JoinColumn,
   Unique,
+  Index,
 } from 'typeorm';
 import { CompanyEntity } from './company.entity';
 
 @Entity('revenue_targets')
 @Unique(['company', 'year', 'month'])
+@Index(['companyId', 'year', 'month']) // Index untuk query filter
+@Index(['year']) // Index untuk query by year
 export class RevenueTargetEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;

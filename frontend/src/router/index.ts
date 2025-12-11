@@ -1,11 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth.store';
 
+// Eager load - halaman utama
 import HomeView from '../views/HomeView.vue';
-import LoginView from '../views/LoginView.vue';
-import UserManagementView from '../views/UserManagementView.vue';
-import InputRevenueView from '../views/InputRevenueView.vue';
-import NotFoundView from '../views/NotFoundView.vue';
+
+// Lazy load - halaman lain di-load saat dibutuhkan
+const LoginView = () => import('../views/LoginView.vue');
+const UserManagementView = () => import('../views/UserManagementView.vue');
+const InputRevenueView = () => import('../views/InputRevenueView.vue');
+const NotFoundView = () => import('../views/NotFoundView.vue');
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
