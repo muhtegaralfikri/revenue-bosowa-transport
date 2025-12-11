@@ -54,7 +54,9 @@ const years = computed(() => {
 });
 
 const companyOptions = computed(() => {
-  const all = [{ label: isMobile.value ? 'Semua' : 'Semua Entity', value: null }];
+  const all: { label: string; value: number | null }[] = [
+    { label: isMobile.value ? 'Semua' : 'Semua Entity', value: null }
+  ];
   return all.concat(
     revenueStore.companies.map((c) => ({
       label: isMobile.value ? c.code : c.name,
@@ -174,7 +176,7 @@ const getMonthName = (month: number) => {
         </div>
 
         <TabView>
-          <TabPanel header="Realisasi">
+          <TabPanel header="Realisasi" value="0">
             <div v-if="loadingRealizations" class="loading-skeleton">
               <Skeleton height="2rem" class="mb-2" />
               <Skeleton height="2rem" class="mb-2" />
@@ -203,7 +205,7 @@ const getMonthName = (month: number) => {
             </div>
           </TabPanel>
 
-          <TabPanel header="Target">
+          <TabPanel header="Target" value="1">
             <div v-if="loadingTargets" class="loading-skeleton">
               <Skeleton height="2rem" class="mb-2" />
               <Skeleton height="2rem" class="mb-2" />

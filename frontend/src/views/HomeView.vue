@@ -18,7 +18,9 @@ const selectedYear = ref(currentDate.getFullYear());
 const selectedCompanyCode = ref<string | null>(null);
 
 const companyFilterOptions = computed(() => {
-  const all = [{ label: isMobile.value ? 'Semua' : 'Semua Entity', value: null }];
+  const all: { label: string; value: string | null }[] = [
+    { label: isMobile.value ? 'Semua' : 'Semua Entity', value: null }
+  ];
   return all.concat(
     companies.value.map((c) => ({
       label: isMobile.value ? c.code : c.name,
