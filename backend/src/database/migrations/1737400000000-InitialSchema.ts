@@ -201,10 +201,8 @@ export class InitialSchema1737400000000 implements MigrationInterface {
     if (driver === 'postgres') {
       return 'uuid_generate_v4()';
     }
-    if (driver === 'mariadb') {
-      return 'UUID()';
-    }
     // MySQL 5.7 doesn't support UUID() as default, generate in application
+    // MariaDB supports it but we'll generate in app for consistency
     return undefined;
   }
 }
