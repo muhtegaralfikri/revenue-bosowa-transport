@@ -46,10 +46,15 @@ const months = [
 
 const years = computed(() => {
   const currentYear = new Date().getFullYear();
-  return Array.from({ length: 5 }, (_, i) => ({
-    label: String(currentYear - i),
-    value: currentYear - i,
-  }));
+  // Include 1 year ahead and 4 years back (total 6 years)
+  const yearList = [];
+  for (let i = -1; i <= 4; i++) {
+    yearList.push({
+      label: String(currentYear - i),
+      value: currentYear - i,
+    });
+  }
+  return yearList;
 });
 
 // Mobile detection
