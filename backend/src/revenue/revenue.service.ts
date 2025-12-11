@@ -81,9 +81,14 @@ export class RevenueService {
     const company = await this.companyRepo.findOne({ where: { id: dto.companyId } });
     if (!company) throw new NotFoundException('Company not found');
 
-    const existing = await this.realizationRepo.findOne({
-      where: { companyId: dto.companyId, date: new Date(dto.date) },
-    });
+    const dateOnly = dto.date.split('T')[0];
+    const targetDate = new Date(dateOnly + 'T00:00:00');
+
+    const existing = await this.realizationRepo
+      .createQueryBuilder('r')
+      .where('r.company_id = :companyId', { companyId: dto.companyId })
+      .andWhere('DATE(r.date) = :date', { date: dateOnly })
+      .getOne();
 
     if (existing) {
       existing.amount = dto.amount;
@@ -94,7 +99,7 @@ export class RevenueService {
 
     const realization = this.realizationRepo.create({
       companyId: dto.companyId,
-      date: new Date(dto.date),
+      date: targetDate,
       amount: dto.amount,
       description: dto.description,
       userId,
@@ -221,6 +226,52 @@ export class RevenueService {
     return {
       year,
       month,
+      labels,
+      datasets,
+    };
+  }
+
+  // === Yearly Comparison ===
+  async getYearlyComparison(year?: number) {
+    const targetYear = year || new Date().getFullYear();
+    const companies = await this.companyRepo.find({ where: { isActive: true } });
+
+    const months = Array.from({ length: 12 }, (_, i) => i + 1);
+    const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+
+    const datasets = await Promise.all(
+      companies.map(async (company) => {
+        const targetData: number[] = [];
+        const realisasiData: number[] = [];
+
+        for (const month of months) {
+          // Get target
+          const target = await this.targetRepo.findOne({
+            where: { companyId: company.id, year: targetYear, month },
+          });
+          targetData.push(target ? Number(target.targetAmount) / 1000000 : 0);
+
+          // Get realization sum for the month
+          const startDate = new Date(targetYear, month - 1, 1);
+          const endDate = new Date(targetYear, month, 0);
+          const realizations = await this.realizationRepo.find({
+            where: { companyId: company.id, date: Between(startDate, endDate) },
+          });
+          const monthTotal = realizations.reduce((sum, r) => sum + Number(r.amount), 0);
+          realisasiData.push(monthTotal / 1000000);
+        }
+
+        return {
+          company: company.code,
+          companyName: company.name,
+          target: targetData,
+          realisasi: realisasiData,
+        };
+      }),
+    );
+
+    return {
+      year: targetYear,
       labels,
       datasets,
     };

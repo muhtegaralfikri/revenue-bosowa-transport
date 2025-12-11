@@ -42,9 +42,23 @@ interface RevenueTrend {
   datasets: TrendDataset[];
 }
 
+interface YearlyComparisonDataset {
+  company: string;
+  companyName: string;
+  target: number[];
+  realisasi: number[];
+}
+
+interface YearlyComparison {
+  year: number;
+  labels: string[];
+  datasets: YearlyComparisonDataset[];
+}
+
 export const useRevenueStore = defineStore('revenue', () => {
   const summary = ref<RevenueSummary | null>(null);
   const trend = ref<RevenueTrend | null>(null);
+  const yearlyComparison = ref<YearlyComparison | null>(null);
   const companies = ref<Company[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
@@ -87,14 +101,49 @@ export const useRevenueStore = defineStore('revenue', () => {
     }
   }
 
+  async function fetchYearlyComparison(year?: number) {
+    try {
+      const params: any = {};
+      if (year) params.year = year;
+      const { data } = await apiClient.get('/revenue/yearly-comparison', { params });
+      yearlyComparison.value = data;
+    } catch (err: any) {
+      console.error('Failed to fetch yearly comparison:', err);
+    }
+  }
+
+  async function createTarget(payload: {
+    companyId: number;
+    year: number;
+    month: number;
+    targetAmount: number;
+  }) {
+    const { data } = await apiClient.post('/revenue/targets', payload);
+    return data;
+  }
+
+  async function createRealization(payload: {
+    companyId: number;
+    date: string;
+    amount: number;
+    description?: string;
+  }) {
+    const { data } = await apiClient.post('/revenue/realizations', payload);
+    return data;
+  }
+
   return {
     summary,
     trend,
+    yearlyComparison,
     companies,
     loading,
     error,
     fetchCompanies,
     fetchSummary,
     fetchTrend,
+    fetchYearlyComparison,
+    createTarget,
+    createRealization,
   };
 });

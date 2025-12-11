@@ -74,4 +74,10 @@ export class RevenueController {
   getTrend(@Query() query: RevenueQueryDto) {
     return this.revenueService.getTrend(query);
   }
+
+  @Get('yearly-comparison')
+  @ApiOperation({ summary: 'Get yearly comparison (12 months) for chart' })
+  getYearlyComparison(@Query('year') year?: number) {
+    return this.revenueService.getYearlyComparison(year);
+  }
 }

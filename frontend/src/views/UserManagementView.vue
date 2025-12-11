@@ -372,12 +372,17 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
+  align-items: end;
 }
 
 .form-field {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+}
+
+.form-grid :deep(.p-button) {
+  height: 2.5rem;
 }
 
 .user-table-wrapper {

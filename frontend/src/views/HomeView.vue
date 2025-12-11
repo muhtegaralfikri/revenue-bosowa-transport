@@ -9,7 +9,7 @@ import BaseChart from '@/components/BaseChart.vue';
 import type { ChartData, ChartOptions } from 'chart.js';
 
 const revenueStore = useRevenueStore();
-const { summary, trend, loading } = storeToRefs(revenueStore);
+const { summary, trend, yearlyComparison, loading } = storeToRefs(revenueStore);
 
 // Filter bulan & tahun
 const currentDate = new Date();
@@ -63,6 +63,7 @@ watch([selectedMonth, selectedYear], () => {
 function fetchData() {
   revenueStore.fetchSummary(selectedYear.value, selectedMonth.value);
   revenueStore.fetchTrend(selectedYear.value, selectedMonth.value);
+  revenueStore.fetchYearlyComparison(selectedYear.value);
 }
 
 // Format Rupiah
@@ -87,12 +88,9 @@ const summaryCards = computed(() => {
   return summary.value.companies.map((item) => ({
     key: item.company.code,
     title: item.company.name,
-    realisasi: item.today.realisasi,
-    target: item.today.target,
-    percentage: item.today.percentage,
-    monthRealisasi: item.month.realisasi,
-    monthTarget: item.month.target,
-    monthPercentage: item.month.percentage,
+    realisasi: item.month.realisasi,
+    target: item.month.target,
+    percentage: item.month.percentage,
     accent: accentColors[item.company.code] || 'text-gray-600',
   }));
 });
@@ -159,27 +157,38 @@ const trendChartOptions = computed<ChartOptions<'line'>>(() => ({
   },
 }));
 
-// Chart perbandingan target vs realisasi (bulanan)
+// Chart perbandingan target vs realisasi per bulan (tahunan)
 const comparisonChartData = computed<ChartData<'bar'> | null>(() => {
-  if (!summary.value?.companies) return null;
+  if (!yearlyComparison.value?.datasets) return null;
+  
+  const datasets: any[] = [];
+  const colors = {
+    BBI: { target: 'rgba(59, 130, 246, 0.5)', realisasi: 'rgba(59, 130, 246, 1)' },
+    BBA: { target: 'rgba(34, 197, 94, 0.5)', realisasi: 'rgba(34, 197, 94, 1)' },
+    JAPELIN: { target: 'rgba(249, 115, 22, 0.5)', realisasi: 'rgba(249, 115, 22, 1)' },
+  };
+
+  yearlyComparison.value.datasets.forEach((ds) => {
+    const color = colors[ds.company as keyof typeof colors] || { target: 'rgba(156, 163, 175, 0.5)', realisasi: 'rgba(156, 163, 175, 1)' };
+    datasets.push({
+      label: `${ds.company} Target`,
+      data: ds.target,
+      backgroundColor: color.target,
+      borderColor: color.realisasi,
+      borderWidth: 1,
+    });
+    datasets.push({
+      label: `${ds.company} Realisasi`,
+      data: ds.realisasi,
+      backgroundColor: color.realisasi,
+      borderColor: color.realisasi,
+      borderWidth: 1,
+    });
+  });
+
   return {
-    labels: summary.value.companies.map((c) => isMobile.value ? c.company.code : c.company.name),
-    datasets: [
-      {
-        label: 'Target Bulanan',
-        data: summary.value.companies.map((c) => c.month.target / 1000000),
-        backgroundColor: 'rgba(156, 163, 175, 0.7)',
-        borderColor: 'rgba(107, 114, 128, 1)',
-        borderWidth: 1,
-      },
-      {
-        label: 'Realisasi Bulanan',
-        data: summary.value.companies.map((c) => c.month.realisasi / 1000000),
-        backgroundColor: 'rgba(34, 197, 94, 0.7)',
-        borderColor: 'rgba(22, 163, 74, 1)',
-        borderWidth: 1,
-      },
-    ],
+    labels: yearlyComparison.value.labels,
+    datasets,
   };
 });
 
@@ -189,6 +198,12 @@ const comparisonChartOptions = computed<ChartOptions<'bar'>>(() => ({
   plugins: {
     legend: {
       position: 'top',
+      labels: {
+        boxWidth: isMobile.value ? 10 : 40,
+        font: {
+          size: isMobile.value ? 9 : 12,
+        },
+      },
     },
     tooltip: {
       callbacks: {
@@ -204,6 +219,10 @@ const comparisonChartOptions = computed<ChartOptions<'bar'>>(() => ({
     x: {
       grid: {
         display: false,
+      },
+      title: {
+        display: true,
+        text: 'Bulan',
       },
     },
     y: {
@@ -269,7 +288,7 @@ const comparisonChartOptions = computed<ChartOptions<'bar'>>(() => ({
                 {{ formatRupiah(metric.realisasi) }}
               </h2>
               <div class="today-info">
-                <span class="text-color-secondary">Hari ini:</span>
+                <span class="text-color-secondary">Bulan ini:</span>
                 <span 
                   class="font-semibold"
                   :class="metric.percentage >= 100 ? 'text-green-600' : 'text-red-600'"
@@ -312,7 +331,7 @@ const comparisonChartOptions = computed<ChartOptions<'bar'>>(() => ({
 
       <Card class="mt-3">
         <template #title>
-          <span class="card-title">Perbandingan Target vs Realisasi</span>
+          <span class="card-title">Perbandingan Target vs Realisasi ({{ selectedYear }})</span>
         </template>
         <template #content>
           <div v-if="comparisonChartData">

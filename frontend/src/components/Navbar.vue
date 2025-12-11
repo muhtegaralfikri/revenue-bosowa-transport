@@ -18,6 +18,10 @@ const menuItems = computed(() => {
 
   if (authStore.isAuthenticated) {
     items.push({
+      label: 'Input',
+      command: () => router.push('/input'),
+    });
+    items.push({
       label: 'Kelola User',
       command: () => router.push('/users'),
     });

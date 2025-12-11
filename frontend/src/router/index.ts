@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import HomeView from '../views/HomeView.vue';
 import LoginView from '../views/LoginView.vue';
 import UserManagementView from '../views/UserManagementView.vue';
+import InputRevenueView from '../views/InputRevenueView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -17,6 +18,12 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: LoginView,
+    },
+    {
+      path: '/input',
+      name: 'input',
+      component: InputRevenueView,
+      meta: { requiresAuth: true },
     },
     {
       path: '/users',
