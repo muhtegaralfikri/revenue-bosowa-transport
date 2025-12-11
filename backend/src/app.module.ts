@@ -7,6 +7,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { RevenueModule } from './revenue/revenue.module';
+import { SheetsModule } from './sheets/sheets.module';
 
 const runtimeEnv = process.env.NODE_ENV ?? 'development';
 const envFiles = [`.env.${runtimeEnv}`, '.env'];
@@ -57,6 +58,7 @@ const envFiles = [`.env.${runtimeEnv}`, '.env'];
     AuthModule,
     UsersModule,
     RevenueModule,
+    SheetsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
