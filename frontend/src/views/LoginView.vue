@@ -17,6 +17,11 @@ const email = ref('');
 const password = ref('');
 const loading = ref(false);
 const error = ref<string | null>(null);
+const passwordRef = ref<InstanceType<typeof Password> | null>(null);
+
+const focusPassword = () => {
+  passwordRef.value?.$el?.querySelector('input')?.focus();
+};
 
 const handleLogin = async () => {
   loading.value = true;
@@ -80,12 +85,14 @@ const handleLogin = async () => {
                 type="email"
                 placeholder="Masukkan email"
                 class="w-full"
+                @keydown.enter="focusPassword"
               />
             </div>
 
             <div class="form-field">
               <label for="password">Password</label>
               <Password
+                ref="passwordRef"
                 id="password"
                 v-model="password"
                 placeholder="Masukkan password"
